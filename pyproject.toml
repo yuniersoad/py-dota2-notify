@@ -1,5 +1,5 @@
 [project]
-name = "dota2_notify"
+name = "dota2-notify"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
@@ -7,7 +7,10 @@ requires-python = ">=3.14"
 dependencies = [
     "aiohttp>=3.13.3",
     "azure-cosmos>=4.14.4",
+    "fastapi>=0.128.0",
     "httpx>=0.28.1",
+    "python-dotenv>=1.2.1",
+    "uvicorn>=0.40.0",
 ]
 
 [build-system]

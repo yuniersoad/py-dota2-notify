@@ -1,11 +1,18 @@
 import os
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from dotenv import load_dotenv
+import logging
+    
 
 from dota2_notify.clients.cosmosdb_client import CosmosDbUserService 
 
+logging.basicConfig(level=logging.INFO)
 load_dotenv() 
+
+def check_new_matches(service: CosmosDbUserService):
+    logging.info("Checking for new matches...")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -15,10 +22,20 @@ async def lifespan(app: FastAPI):
         database_name=os.getenv("COSMOSDB__DATABASENAME"),
         container_name=os.getenv("COSMOSDB__CONTAINERNAME")
     )
+    await service.connect()
+    app.state.user_service = service
     
-    async with service:
-        app.state.user_service = service
-        yield 
+    scheduler = AsyncIOScheduler()
+    scheduler.add_job(check_new_matches, 'interval', seconds=10, args=[service])
+    scheduler.start()
+    
+    # pass control to the application
+    yield
+
+    # cleanup
+    scheduler.shutdown()
+    await service.close()
+   
     
 app = FastAPI(lifespan=lifespan)
 
@@ -37,6 +54,7 @@ async def get_user(user_id: int):
 
 def main():
     import uvicorn
+    
     uvicorn.run(app, host="0.0.0.0", port=8000)
 
 if __name__ == "__main__":

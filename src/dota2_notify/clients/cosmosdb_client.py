@@ -91,3 +91,24 @@ class CosmosDbUserService:
         except Exception as ex:
             self._logger.error(f"Error getting all users: {ex}")
             raise
+    
+    async def update_last_match_id(self, user_id: int, followed_player_id: int, last_match_id: int):
+        try:
+            self._logger.info(f"Updating last match ID for user {user_id}, player {followed_player_id} to {last_match_id}")
+            
+            user = await self.get_user_async(user_id)
+            if user is None:
+                self._logger.warning(f"User {user_id} not found for update")
+                return
+            
+            for player in user.following:
+                if player.user_id == followed_player_id:
+                    player.last_match_id = last_match_id
+                    break
+            
+            await self._container.upsert_item(user.to_dict())
+            self._logger.info(f"Successfully updated last match ID for user {user_id}, player {followed_player_id}")
+            
+        except Exception as ex:
+            self._logger.error(f"Error updating last match ID for user {user_id}, player {followed_player_id}: {ex}")
+            raise

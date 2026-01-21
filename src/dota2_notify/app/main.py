@@ -13,9 +13,7 @@ from dota2_notify.clients.opendota_client import OpenDotaClient
 from dota2_notify.clients.telegram_client import TelegramClient
 
 logging.basicConfig(level=logging.INFO)
-load_dotenv() 
-
-
+load_dotenv()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -29,18 +27,24 @@ async def lifespan(app: FastAPI):
     app.state.user_service = db_client
 
     open_dota_client = OpenDotaClient(client=httpx.AsyncClient())
-    
     telegram_client = TelegramClient(token=os.getenv("TELEGRAM__BOTTOKEN"), client=httpx.AsyncClient())
-    
     scheduler = AsyncIOScheduler()
-    scheduler.add_job(check_new_matches, 'interval', seconds=10, args=[db_client, open_dota_client, telegram_client])
-    scheduler.start()
+
+    check_enabled = os.getenv("MATCHCHECK__ENABLED", "true").lower() in ("true", "1", "yes")
+    if check_enabled:
+        interval_minutes = int(os.getenv("MATCHCHECK__INTERVALMINUTES", "5"))
+        logging.info(f"Match checking is enabled. Scheduling periodic match checks. Every {interval_minutes} minutes.")
+        scheduler.add_job(check_new_matches, 'interval', minutes=interval_minutes, args=[db_client, open_dota_client, telegram_client])
+        scheduler.start()
+    else:
+        logging.info("Match checking is disabled. No periodic match checks will be scheduled.")
     
     # pass control to the application
     yield
 
     # cleanup
-    scheduler.shutdown()
+    if check_enabled:
+        scheduler.shutdown()
     await db_client.close()
     await open_dota_client.client.aclose()
     await telegram_client.client.aclose()

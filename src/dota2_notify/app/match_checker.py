@@ -24,7 +24,7 @@ async def check_new_matches(db_client: CosmosDbUserService, open_dota_client: Op
             newest_match = recent_matches[0]
             
             # Create notification message
-            outcome = "✅ WON" if newest_match.player_won else "❌ LOST"
+            outcome = "✅ Won" if newest_match.player_won else "❌ Lost"
             match_duration_seconds = newest_match.duration
             hours = match_duration_seconds // 3600
             minutes = (match_duration_seconds % 3600) // 60

@@ -1,0 +1,49 @@
+name: Trigger auto deployment for dota2notify2
+
+# When this action will be executed
+on:
+  # Automatically trigger it when detected changes in repo
+  push:
+    branches: 
+      [ master ]
+    paths:
+    - '**'
+    - '.github/workflows/dota2notify2-AutoDeployTrigger-7447e7c0-5f7e-4778-9aeb-19d59891c4d3.yml'
+
+  # Allow manual trigger 
+  workflow_dispatch:      
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions: 
+      id-token: write #This is required for requesting the OIDC JWT Token
+      contents: read #Required when GH token is used to authenticate with private repo
+
+    steps:
+      - name: Checkout to the branch
+        uses: actions/checkout@v2
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.DOTA2NOTIFY2_AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.DOTA2NOTIFY2_AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.DOTA2NOTIFY2_AZURE_SUBSCRIPTION_ID }}
+
+      - name: Build and push container image to registry
+        uses: azure/container-apps-deploy-action@v2
+        with:
+          appSourcePath: ${{ github.workspace }}
+          _dockerfilePathKey_: _dockerfilePath_
+          _targetLabelKey_: _targetLabel_
+          registryUrl: dota2notify2.azurecr.io
+          registryUsername: ${{ secrets.DOTA2NOTIFY2_REGISTRY_USERNAME }}
+          registryPassword: ${{ secrets.DOTA2NOTIFY2_REGISTRY_PASSWORD }}
+          containerAppName: dota2notify2
+          resourceGroup: dota2notify
+          imageToBuild: dota2notify2.azurecr.io/dota2notify2:${{ github.sha }}
+          _buildArgumentsKey_: |
+            _buildArgumentsValues_
+
+

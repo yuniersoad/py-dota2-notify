@@ -12,7 +12,13 @@ from dota2_notify.clients.cosmosdb_client import CosmosDbUserService
 from dota2_notify.clients.opendota_client import OpenDotaClient
 from dota2_notify.clients.telegram_client import TelegramClient
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logging.getLogger("azure.cosmos").setLevel(logging.WARNING)
+logging.getLogger("azure.core").setLevel(logging.WARNING)
+
 load_dotenv()
 
 @asynccontextmanager
@@ -63,6 +69,10 @@ async def get_user(user_id: int):
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
     return user
+
+@app.get("/health")
+async def health_check():
+    return {"status": "healthy"}
 
 def main():
     import uvicorn

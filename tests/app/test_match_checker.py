@@ -81,7 +81,7 @@ async def test_check_new_matches_new_match_found_won(mock_db_client, mock_opendo
     
     # Assert
     expected_message = (
-        "ProPlayer ✅ WON a match as Anti-Mage with KDA 10/2/15. "
+        "ProPlayer ✅ Won a match as Anti-Mage with KDA 10/2/15. "
         "Match duration: 40m 0s. "
         "Match details: https://www.dotabuff.com/matches/7891"
     )
@@ -122,7 +122,7 @@ async def test_check_new_matches_new_match_found_lost(mock_db_client, mock_opend
     
     # Assert
     expected_message = (
-        "ProPlayer ❌ LOST a match as Invoker with KDA 5/8/12. "
+        "ProPlayer ❌ Lost a match as Invoker with KDA 5/8/12. "
         "Match duration: 30m 45s. "
         "Match details: https://www.dotabuff.com/matches/7891"
     )
@@ -163,7 +163,7 @@ async def test_check_new_matches_long_duration_format(mock_db_client, mock_opend
     
     # Assert
     expected_message = (
-        "ProPlayer ✅ WON a match as Techies with KDA 3/1/20. "
+        "ProPlayer ✅ Won a match as Techies with KDA 3/1/20. "
         "Match duration: 1h 30m 30s. "
         "Match details: https://www.dotabuff.com/matches/7891"
     )

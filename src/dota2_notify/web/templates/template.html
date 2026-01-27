@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dota2Notify | {% block title %} {% endblock %}</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <div class="header-top">
+                <div>
+                    <h1>🎮 Dota2Notify</h1>
+                    <p>Real-time Dota 2 match notifications</p>
+                </div>
+                <a href="#" class="login-link">Log In</a>
+            </div>
+            <nav>
+                <a href="/">Home</a>
+                <a href="/users">Users</a>
+                <a href="/health">Health</a>
+            </nav>
+        </div>
+    </header>
+    
+    <main class="container">
+        {% block content %}
+        <h2>Welcome to Dota2Notify</h2>
+        <div class="info-box">
+            <p>Get instant notifications for your favorite Dota 2 players' matches!</p>
+        </div>
+        {% endblock %}
+    </main>
+    
+    <footer>
+        <div class="container">
+            <p>&copy; 2026 Dota2Notify - Stay updated with your favorite friends/players</p>        
+        </div>
+    </footer>
+</body>
+</html>

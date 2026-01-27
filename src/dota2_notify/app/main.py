@@ -1,7 +1,7 @@
 import os
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
-from dota2_notify.web import users, health
+from dota2_notify.web import users, health, friends, static
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from dotenv import load_dotenv
 import logging
@@ -72,6 +72,8 @@ app = FastAPI(lifespan=lifespan)
 
 app.include_router(users.router)
 app.include_router(health.router)
+app.include_router(friends.router)
+app.mount("/static", static.static_files, name="static")
 
 def main():
     import uvicorn

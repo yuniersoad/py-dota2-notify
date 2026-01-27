@@ -1,6 +1,7 @@
 import os
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
+from dota2_notify.web import users, health
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from dotenv import load_dotenv
 import logging
@@ -69,22 +70,8 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-@app.get("/users")
-async def get_users():
-    # Reuse the persistent, non-blocking connection
-    return await app.state.user_service.get_all_users_async()
-
-@app.get("/users/{user_id}")
-async def get_user(user_id: int):
-    # Reuse the persistent, non-blocking connection
-    user = await app.state.user_service.get_user_async(user_id)
-    if user is None:
-        raise HTTPException(status_code=404, detail="User not found")
-    return user
-
-@app.get("/health")
-async def health_check():
-    return {"status": "healthy"}
+app.include_router(users.router)
+app.include_router(health.router)
 
 def main():
     import uvicorn

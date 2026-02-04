@@ -14,7 +14,12 @@
                     <h1>🎮 Dota2Notify</h1>
                     <p>Real-time Dota 2 match notifications</p>
                 </div>
-                <a href="#" class="login-link">Log In</a>
+                {% if steam_id %}
+                    <a href="/profile" class="login-link">{{ steam_id }}</a>
+                    <a href="/auth/logout" class="login-link">Log Out</a>
+                {% else %}
+                    <a href="/auth/login" class="login-link">Log In</a>
+                {% endif %}
             </div>
             <nav>
                 <a href="/">Home</a>

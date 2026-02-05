@@ -1,7 +1,7 @@
 import os
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
-from dota2_notify.web import users, auth, health, friends, static
+from dota2_notify.web import auth, health, friends, static
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from dotenv import load_dotenv
 import logging
@@ -70,7 +70,6 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-app.include_router(users.router)
 app.include_router(health.router)
 app.include_router(friends.router)
 app.include_router(auth.router)

@@ -36,14 +36,8 @@ async def login(request: Request):
 async def steam_callback(request: Request):
     params = dict(request.query_params)
     
-    # 1. Verification Step (as before)
-    v_params = params.copy()
-    v_params["openid.mode"] = "check_authentication"
-    
-    async with httpx.AsyncClient() as client:
-        response = await client.post(steam_openid_url, data=v_params)
-    
-    if "is_valid:true" not in response.text:
+    # 1. Verification Step
+    if not await request.app.state.steam_client.validate_auth_request(params.copy()):
         raise HTTPException(status_code=400, detail="Invalid Steam login")
 
     # 2. Extract SteamID64

@@ -1,12 +1,22 @@
+from urllib import response
 import httpx
 
 class SteamClient:
     BASE_URL = "https://api.steampowered.com/"
+    OPEN_ID_URL = "https://steamcommunity.com/openid/login"
 
     def __init__(self, api_key: str, client: httpx.AsyncClient):
         self.api_key = api_key
         self.client = client
         self.client.base_url = self.BASE_URL
+
+    async def validate_auth_request(self, params: dict) -> bool:         
+        params["openid.mode"] = "check_authentication"
+        try:
+            response = await self.client.post(self.OPEN_ID_URL, data=params)
+        except httpx.HTTPError:
+            return False
+        return "is_valid:true" in response.text
 
     async def get_player_summaries(self, steam_ids: list[str]) -> dict:
         response = await self.client.get(

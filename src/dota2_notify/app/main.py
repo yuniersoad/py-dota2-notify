@@ -12,6 +12,7 @@ from dota2_notify.app.match_checker import check_new_matches
 from dota2_notify.clients.cosmosdb_client import CosmosDbUserService 
 from dota2_notify.clients.opendota_client import OpenDotaClient
 from dota2_notify.clients.telegram_client import TelegramClient
+from dota2_notify.clients.steam_client import SteamClient
 
 logging.basicConfig(
     level=logging.INFO,
@@ -34,21 +35,23 @@ async def lifespan(app: FastAPI):
     await db_client.connect()
     app.state.user_service = db_client
 
-    open_dota_client = OpenDotaClient(client=httpx.AsyncClient())
 
-    # Create httpx client with event hooks to redact sensitive data from logs
+     # Create httpx client with event hooks to redact sensitive data from logs
     async def log_request(request):
         logging.info(f"HTTP Request: {request.method} {str(request.url).replace(os.getenv('TELEGRAM__BOTTOKEN', ''), '[REDACTED]')}")
 
     async def log_response(response):
         logging.info(f"HTTP Response: {response.status_code}")
-
-    telegram_http_client = httpx.AsyncClient(
+    
+    http_client = httpx.AsyncClient(
         event_hooks={'request': [log_request], 'response': [log_response]}
     )
-    telegram_client = TelegramClient(token=os.getenv("TELEGRAM__BOTTOKEN"), client=telegram_http_client)
-    scheduler = AsyncIOScheduler()
+    open_dota_client = OpenDotaClient(client=http_client)    
+    telegram_client = TelegramClient(token=os.getenv("TELEGRAM__BOTTOKEN"), client=http_client)
+    steam_client = SteamClient(api_key=os.getenv("STEAM__APIKEY"),client=http_client)
+    app.state.steam_client = steam_client
 
+    scheduler = AsyncIOScheduler()
     check_enabled = os.getenv("MATCHCHECK__ENABLED", "true").lower() in ("true", "1", "yes")
     if check_enabled:
         interval_minutes = int(os.getenv("MATCHCHECK__INTERVALMINUTES", "5"))
@@ -65,8 +68,7 @@ async def lifespan(app: FastAPI):
     if check_enabled:
         scheduler.shutdown()
     await db_client.close()
-    await open_dota_client.client.aclose()
-    await telegram_client.client.aclose()
+    await http_client.aclose()
 
 app = FastAPI(lifespan=lifespan)
 

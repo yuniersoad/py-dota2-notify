@@ -65,7 +65,7 @@ async def logout():
     )
     return response
 
-async def get_current_user(request: Request) -> str:
+async def get_current_user(request: Request) -> str | None:
     token = request.cookies.get(cookie_name)
     if not token:
         return None

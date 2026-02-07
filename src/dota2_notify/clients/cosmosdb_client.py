@@ -10,6 +10,7 @@ from dota2_notify.models.user import User
 
 class CosmosDbUserService:
     """Service for managing users in Cosmos DB."""
+    STEAM_ID_OFFSET = 76561197960265728
     
     def __init__(self, connection_endpoint: str, key: str, database_name: str, container_name: str):
         """
@@ -38,6 +39,12 @@ class CosmosDbUserService:
         """Async context manager exit."""
         await self.close()
     
+    def steam_id_to_account_id(self, steam_id: int) -> int:
+        return steam_id - self.STEAM_ID_OFFSET
+    
+    def account_id_to_steam_id(self, account_id: int) -> int:
+        return account_id + self.STEAM_ID_OFFSET
+    
     async def connect(self):
         """Establish connection to Cosmos DB."""
         if self._client is None:
@@ -54,24 +61,53 @@ class CosmosDbUserService:
             self._container = None
             self._logger.info("Closed Cosmos DB connection")
     
-    async def get_user_async(self, user_id: int) -> Optional[User]:
+    async def create_user_async(self, account_id: int, name: str) -> User:
+        user = User(
+            id=str(account_id),
+            user_id=account_id,
+            name=name,
+            telegram_chat_id="",
+            following=[],
+            type="user"
+        )
         try:
-            self._logger.info(f"Getting user with ID {user_id}")
+            self._logger.info(f"Creating user with Account ID {account_id}")
+            await self._container.create_item(user.to_dict())
+            self._logger.info(f"Successfully created user {account_id}")
+            return user
+        except exceptions.CosmosResourceExistsError:
+            self._logger.warning(f"User with Account ID {account_id} already exists")
+            return await self.get_user_async(account_id)
+        except Exception as ex:
+            self._logger.error(f"Error creating user with Account ID {account_id}: {ex}")
+            raise
+    
+    async def create_user_with_steam_id_async(self, steam_id: int, name: str) -> User:
+        account_id = self.steam_id_to_account_id(steam_id)
+        return await self.create_user_async(account_id, name)
+    
+    async def get_user_async(self, account_id: int) -> Optional[User]:
+        try:
+            self._logger.info(f"Getting user with ID {account_id}")
             
             response = await self._container.read_item(
-                item=str(user_id),
-                partition_key=user_id
+                item=str(account_id),
+                partition_key=account_id
             )
             
-            self._logger.info(f"Successfully retrieved user {user_id}")
+            self._logger.info(f"Successfully retrieved user {account_id}")
             return User.from_dict(response)
             
         except exceptions.CosmosResourceNotFoundError:
-            self._logger.warning(f"User {user_id} not found")
+            self._logger.warning(f"User {account_id} not found")
             return None
         except Exception as ex:
-            self._logger.error(f"Error getting user {user_id}: {ex}")
+            self._logger.error(f"Error getting user {account_id}: {ex}")
             raise
+    
+    async def get_user_with_steam_id_async(self, steam_id: int) -> Optional[User]:
+        account_id = self.steam_id_to_account_id(steam_id)
+        return await self.get_user_async(account_id)
     
     async def get_all_users_async(self) -> List[User]:
         try:
@@ -92,13 +128,13 @@ class CosmosDbUserService:
             self._logger.error(f"Error getting all users: {ex}")
             raise
     
-    async def update_last_match_id(self, user_id: int, followed_player_id: int, last_match_id: int):
+    async def update_last_match_id(self, account_id: int, followed_player_id: int, last_match_id: int):
         try:
-            self._logger.info(f"Updating last match ID for user {user_id}, player {followed_player_id} to {last_match_id}")
+            self._logger.info(f"Updating last match ID for user {account_id}, player {followed_player_id} to {last_match_id}")
             
-            user = await self.get_user_async(user_id)
+            user = await self.get_user_async(account_id)
             if user is None:
-                self._logger.warning(f"User {user_id} not found for update")
+                self._logger.warning(f"User {account_id} not found for update")
                 return
             
             for player in user.following:
@@ -107,8 +143,8 @@ class CosmosDbUserService:
                     break
             
             await self._container.upsert_item(user.to_dict())
-            self._logger.info(f"Successfully updated last match ID for user {user_id}, player {followed_player_id}")
+            self._logger.info(f"Successfully updated last match ID for user {account_id}, player {followed_player_id}")
             
         except Exception as ex:
-            self._logger.error(f"Error updating last match ID for user {user_id}, player {followed_player_id}: {ex}")
+            self._logger.error(f"Error updating last match ID for user {account_id}, player {followed_player_id}: {ex}")
             raise

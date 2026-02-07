@@ -29,7 +29,7 @@ async def test_get_user_async():
             database_name="test-db",
             container_name="test-container"
         ) as service:
-            user = await service.get_user_async(user_id=123)
+            user = await service.get_user_async(account_id=123)
             
             assert user is not None
             assert user.id == "user-123"

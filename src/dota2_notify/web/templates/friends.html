@@ -5,9 +5,17 @@
 {% endblock %}
 
 {% block content %}
-<h2>Friends List</h2>
-<ul>
-    {% for friend in friends %}
-    <li>{{ friend }}</li>
-    {% endfor %}
+    {% if steam_id %}
+        <h2>Friends List</h2>
+        <ul>
+        {% for friend in friends %}
+                <li><img src="{{ friend.avatar }}" alt="Avatar" style="width: 32px; height: 32px; vertical-align: middle; margin-right: 8px;">{{ friend.personaname }}</li>
+        {% endfor %}
+        </ul>
+    {% else %}
+        <h2>Please log in to see your friends list.</h2>
+        <p class="container">
+            <span><a href="/auth/login" ">Log In</a></span>
+        </p>        
+    {% endif %}
 {% endblock %}

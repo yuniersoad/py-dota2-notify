@@ -3,6 +3,7 @@ import os
 from unittest.mock import AsyncMock, MagicMock
 from fastapi import FastAPI, Request
 from fastapi.testclient import TestClient
+from dota2_notify.models.user import User
 from dota2_notify.web.auth import router, cookie_name, get_current_user, create_access_token
 from urllib.parse import parse_qs, urlparse
 from jose import jwt
@@ -60,6 +61,11 @@ async def test_steam_callback_sets_jwt_cookie(monkeypatch):
     mock_steam_client = MagicMock()
     mock_steam_client.validate_auth_request = AsyncMock(return_value=True)
     app.state.steam_client = mock_steam_client
+
+    # mock the user_service assume the user does already exist
+    mock_user_service = MagicMock()
+    mock_user_service.get_user_with_steam_id_async = AsyncMock(return_value=User.from_dict({"user_id": 52079950, "id": "52079950", "name": "TestUser"}))
+    app.state.user_service = mock_user_service  
     
     client = TestClient(app)
     

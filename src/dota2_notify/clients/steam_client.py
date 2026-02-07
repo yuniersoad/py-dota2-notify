@@ -1,6 +1,8 @@
 from urllib import response
 import httpx
 
+from ..models.steam_player_summary import SteamPlayerSummary 
+
 class SteamClient:
     BASE_URL = "https://api.steampowered.com/"
     OPEN_ID_URL = "https://steamcommunity.com/openid/login"
@@ -17,13 +19,15 @@ class SteamClient:
             return False
         return "is_valid:true" in response.text
 
-    async def get_player_summaries(self, steam_ids: list[str]) -> dict:
+    async def get_player_summaries(self, steam_ids: list[str]) -> list[SteamPlayerSummary]:
         response = await self.client.get(
             f"{self.BASE_URL}ISteamUser/GetPlayerSummaries/v2/",
             params={"steamids": ",".join(steam_ids), "key": self.api_key}
         )
         response.raise_for_status()
-        return response.json()
+        data = response.json()
+        players_data = data.get("response", {}).get("players", [])
+        return [SteamPlayerSummary.from_dict(player) for player in players_data]
     
     async def get_friend_list(self, steam_id: str) -> dict:
         response = await self.client.get(

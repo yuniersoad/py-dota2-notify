@@ -10,4 +10,13 @@ template_obj = Jinja2Templates(directory=f"{top}/templates")
 
 @router.get("/")
 async def get_friends(request: Request,  steam_id: str = Depends(get_current_user)):
-    return template_obj.TemplateResponse("friends.html", {"request": request, "steam_id": steam_id, "friends": ["Friend1", "Friend2", "Friend3"]})
+    user = None
+    friends = []
+    player_summaries = []
+    if steam_id is not None:
+        user = await request.app.state.user_service.get_user_with_steam_id_async(int(steam_id))
+        friends = await request.app.state.steam_client.get_friend_list(steam_id)
+        player_summaries = await request.app.state.steam_client.get_player_summaries(
+            [friend["steamid"] for friend in friends.get("friendslist", {}).get("friends", [])]
+        )
+    return template_obj.TemplateResponse(request, "friends.html", { "steam_id": steam_id, "user": user, "friends": player_summaries})

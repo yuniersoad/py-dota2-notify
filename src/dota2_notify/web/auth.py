@@ -1,9 +1,9 @@
+import logging
 import os
 from dotenv import load_dotenv
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import RedirectResponse
 from urllib.parse import urlencode
-import httpx
 import re
 from datetime import datetime, timedelta, timezone
 from jose import jwt, JWTError
@@ -44,7 +44,18 @@ async def steam_callback(request: Request):
     claimed_id = params.get("openid.claimed_id", "")
     steam_id = re.search(r"id/(\d+)$", claimed_id).group(1)
 
-    # 3. Create the JWT
+    # 3. Fetch user from database or create a new one
+    user = await request.app.state.user_service.get_user_with_steam_id_async(int(steam_id))
+    if user is None:
+        logging.info(f"No existing user found with Steam ID {steam_id}. Creating new user.")
+        steam_player_summaries = await request.app.state.steam_client.get_player_summaries([steam_id])
+        player_summary = steam_player_summaries[0] if steam_player_summaries else None
+        name = player_summary.personaname if player_summary else f"User{steam_id}"
+        user = await request.app.state.user_service.create_user_with_steam_id_async(int(steam_id), name)
+    else:
+        logging.info(f"User with Steam ID {steam_id} already exists in database with user ID {user.user_id}.")
+
+    # 4. Create the JWT
     token = create_access_token(data={"sub": steam_id})
 
     response = RedirectResponse(url="/")

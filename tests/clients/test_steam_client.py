@@ -64,12 +64,15 @@ async def test_get_player_summaries(httpx_mock):
         steam_client = SteamClient(api_key="dummy_key", client=client)
         response = await steam_client.get_player_summaries(steam_ids=["76561198098445678", "76561198153901234"])
         
-        assert "response" in response
-        assert "players" in response["response"]
-        assert len(response["response"]["players"]) == 2
-        assert response["response"]["players"][0]["steamid"] == "76561198098445678"
-        assert response["response"]["players"][0]["personaname"] == "Player1"
-
+        assert len(response) == 2
+        assert response[0].steamid == "76561198098445678"
+        assert response[0].personaname == "Player1"
+        assert response[0].profileurl == "https://steamcommunity.com/id/player1/"
+        assert response[0].avatar == "https://avatars.steamstatic.com/avatar1.jpg"
+        assert response[1].steamid == "76561198153901234"
+        assert response[1].personaname == "Player2"
+        assert response[1].profileurl == "https://steamcommunity.com/id/player2/"
+        assert response[1].avatar == "https://avatars.steamstatic.com/avatar2.jpg"
 
 @pytest.mark.asyncio
 async def test_validate_auth_request(httpx_mock):

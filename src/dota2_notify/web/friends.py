@@ -1,3 +1,4 @@
+import asyncio
 from pathlib import Path
 from fastapi import APIRouter, HTTPException, Request, Depends
 from fastapi.templating import Jinja2Templates
@@ -14,8 +15,10 @@ async def get_friends(request: Request,  steam_id: str = Depends(get_current_use
     friends = []
     player_summaries = []
     if steam_id is not None:
-        user = await request.app.state.user_service.get_user_with_steam_id_async(int(steam_id))
-        friends = await request.app.state.steam_client.get_friend_list(steam_id)
+        user, friends = await asyncio.gather(
+            request.app.state.user_service.get_user_with_steam_id_async(int(steam_id)),
+            request.app.state.steam_client.get_friend_list(steam_id)
+        )
         player_summaries = await request.app.state.steam_client.get_player_summaries(
             [friend["steamid"] for friend in friends.get("friendslist", {}).get("friends", [])]
         )

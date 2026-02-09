@@ -91,3 +91,72 @@ async def test_validate_auth_request(httpx_mock):
         result = await steam_client.validate_auth_request(params)
         
         assert result is True
+
+@pytest.mark.asyncio
+async def test_get_match_history_private_profile(httpx_mock):
+    body = {
+        "result": {
+            "status": 15,
+            "statusDetail": "Cannot get match history for a user that hasn't allowed it"
+        }
+    }
+    httpx_mock.add_response(
+        url="https://api.steampowered.com/IDOTA2Match_570/GetMatchHistory/v1/?account_id=76561198882123456&key=dummy_key",
+        method="GET",
+        json=body
+    )
+
+    async with httpx.AsyncClient() as client:
+        steam_client = SteamClient(api_key="dummy_key", client=client)
+        response, is_public = await steam_client.get_match_history(steam_id="76561198882123456")
+        
+        assert "result" in response
+        assert response["result"]["status"] == 15
+        assert response["result"]["statusDetail"] == "Cannot get match history for a user that hasn't allowed it"
+        assert is_public is False
+
+@pytest.mark.asyncio
+async def test_get_match_history_public_profile(httpx_mock):
+    body = {
+        "result": {
+            "status": 1,
+            "num_results": 2,
+            "total_results": 2,
+            "results_remaining": 0,
+            "matches": [
+                {
+                    "match_id": 7812345678,
+                    "match_seq_num": 6543210987,
+                    "start_time": 1707494400,
+                    "lobby_type": 0,
+                    "radiant_team_id": 0,
+                    "dire_team_id": 0
+                },
+                {
+                    "match_id": 7812345679,
+                    "match_seq_num": 6543210988,
+                    "start_time": 1707497000,
+                    "lobby_type": 0,
+                    "radiant_team_id": 0,
+                    "dire_team_id": 0
+                }
+            ]
+        }
+    }
+    httpx_mock.add_response(
+        url="https://api.steampowered.com/IDOTA2Match_570/GetMatchHistory/v1/?account_id=76561198882123456&key=dummy_key",
+        method="GET",
+        json=body
+    )
+
+    async with httpx.AsyncClient() as client:
+        steam_client = SteamClient(api_key="dummy_key", client=client)
+        response, is_public = await steam_client.get_match_history(steam_id="76561198882123456")
+        
+        assert "result" in response
+        assert response["result"]["status"] == 1
+        assert response["result"]["num_results"] == 2
+        assert len(response["result"]["matches"]) == 2
+        assert response["result"]["matches"][0]["match_id"] == 7812345678
+        assert response["result"]["matches"][1]["match_id"] == 7812345679
+        assert is_public is True

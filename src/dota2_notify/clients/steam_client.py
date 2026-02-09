@@ -36,3 +36,16 @@ class SteamClient:
         )
         response.raise_for_status()
         return response.json()
+
+    async def get_match_history(self, steam_id: str, matches_requested: int | None = None) -> tuple[dict, bool]:
+        params = {"account_id": steam_id, "key": self.api_key}
+        if matches_requested is not None:
+            params["matches_requested"] = matches_requested
+        response = await self.client.get(
+            f"{self.BASE_URL}IDOTA2Match_570/GetMatchHistory/v1/",
+            params=params
+        )
+        response.raise_for_status()
+        data = response.json()
+        is_public = data.get("result", {}).get("status") != 15
+        return data, is_public

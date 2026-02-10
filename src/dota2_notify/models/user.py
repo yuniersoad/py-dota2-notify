@@ -3,28 +3,38 @@ from typing import List
 
 
 @dataclass
-class FollowedPlayer:
-    """Represents a player being followed by a user."""
+class Friend:
+    """Represents a friend in the Dota 2 notification system."""
+    id: str = ""
     user_id: int = 0
     name: str = ""
     last_match_id: int = 0
+    following: bool = False
+    type: str = "friend"
 
     def to_dict(self) -> dict:
         """Convert to dictionary for Cosmos DB serialization."""
         return {
+            "id": self.id,
             "userId": self.user_id,
             "name": self.name,
-            "lastMatchId": self.last_match_id
+            "lastMatchId": self.last_match_id,
+            "following": self.following,
+            "type": self.type
         }
 
     @classmethod
-    def from_dict(cls, data: dict) -> "FollowedPlayer":
+    def from_dict(cls, data: dict) -> "Friend":
         """Create instance from dictionary (Cosmos DB deserialization)."""
         return cls(
+            id=data.get("id", ""),
             user_id=data.get("userId", 0),
             name=data.get("name", ""),
-            last_match_id=data.get("lastMatchId", 0)
+            last_match_id=data.get("lastMatchId", 0),
+            following=data.get("following", False),
+            type=data.get("type", "friend")
         )
+
 
 
 @dataclass
@@ -34,7 +44,8 @@ class User:
     user_id: int = 0
     name: str = ""
     telegram_chat_id: str = ""
-    following: List[FollowedPlayer] = field(default_factory=list)
+    following: bool = True
+    last_match_id: int = 0
     type: str = "user"
 
     def to_dict(self) -> dict:
@@ -44,8 +55,9 @@ class User:
             "userId": self.user_id,
             "name": self.name,
             "telegramChatId": self.telegram_chat_id,
-            "following": [player.to_dict() for player in self.following],
-            "type": self.type
+            "type": self.type,
+            "following": self.following,
+            "lastMatchId": self.last_match_id
         }
 
     @classmethod
@@ -56,9 +68,7 @@ class User:
             user_id=data.get("userId", 0),
             name=data.get("name", ""),
             telegram_chat_id=data.get("telegramChatId", ""),
-            following=[
-                FollowedPlayer.from_dict(player) 
-                for player in data.get("following", [])
-            ],
-            type=data.get("type", "user")
+            following=data.get("following", True),
+            type=data.get("type", "user"),
+            last_match_id=data.get("lastMatchId", 0)
         )

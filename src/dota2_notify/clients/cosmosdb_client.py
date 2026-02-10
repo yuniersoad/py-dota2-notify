@@ -5,7 +5,7 @@ import logging
 from typing import Optional, List
 from azure.cosmos.aio import CosmosClient
 from azure.cosmos import exceptions
-from dota2_notify.models.user import User
+from dota2_notify.models.user import User, Friend
 
 
 class CosmosDbUserService:
@@ -67,7 +67,7 @@ class CosmosDbUserService:
             user_id=account_id,
             name=name,
             telegram_chat_id="",
-            following=[],
+            following=True,
             type="user"
         )
         try:
@@ -128,21 +128,76 @@ class CosmosDbUserService:
             self._logger.error(f"Error getting all users: {ex}")
             raise
     
+    async def get_friends_async(self, account_id: int, following: Optional[bool] = None) -> List[Friend]:
+        try:
+            self._logger.info(f"Getting all friends for user {account_id}")
+            
+            if following is not None:
+                query = "SELECT * FROM c WHERE c.type = 'friend' AND c.userId = @userId AND c.following = @following"
+                parameters = [
+                    {"name": "@userId", "value": account_id},
+                    {"name": "@following", "value": following}
+                ]
+            else:
+                query = "SELECT * FROM c WHERE c.type = 'friend' AND c.userId = @userId"
+                parameters = [{"name": "@userId", "value": account_id}]
+            
+            friends = []
+            
+            async for item in self._container.query_items(
+                query=query,
+                parameters=parameters,
+                partition_key=account_id
+            ):
+                friends.append(Friend.from_dict(item))
+            
+            self._logger.info(f"Retrieved {len(friends)} friends for user {account_id}")
+            return friends
+            
+        except Exception as ex:
+            self._logger.error(f"Error getting friends for user {account_id}: {ex}")
+            raise
+    
+    async def get_friend_async(self, account_id: int, followed_player_id: int) -> Optional[Friend]:
+        try:
+            self._logger.info(f"Getting friend {followed_player_id} for user {account_id}")
+            
+            query = "SELECT * FROM c WHERE c.type = 'friend' AND c.userId = @userId AND c.id = @friendId"
+            parameters = [
+                {"name": "@userId", "value": account_id},
+                {"name": "@friendId", "value": str(followed_player_id)}
+            ]
+            
+            async for item in self._container.query_items(
+                query=query,
+                parameters=parameters,
+                partition_key=account_id
+            ):
+                self._logger.info(f"Successfully retrieved friend {followed_player_id} for user {account_id}")
+                return Friend.from_dict(item)
+            
+            self._logger.warning(f"Friend {followed_player_id} not found for user {account_id}")
+            return None
+            
+        except Exception as ex:
+            self._logger.error(f"Error getting friend {followed_player_id} for user {account_id}: {ex}")
+            raise
+    
     async def update_last_match_id(self, account_id: int, followed_player_id: int, last_match_id: int):
         try:
             self._logger.info(f"Updating last match ID for user {account_id}, player {followed_player_id} to {last_match_id}")
             
-            user = await self.get_user_async(account_id)
-            if user is None:
-                self._logger.warning(f"User {account_id} not found for update")
+            if account_id == followed_player_id:
+                record = await self.get_user_async(account_id)
+            else:
+                record = await self.get_friend_async(account_id, followed_player_id)
+            
+            if record is None:
+                self._logger.warning(f"User/Friend {account_id}, {followed_player_id} not found for update")
                 return
             
-            for player in user.following:
-                if player.user_id == followed_player_id:
-                    player.last_match_id = last_match_id
-                    break
-            
-            await self._container.upsert_item(user.to_dict())
+            record.last_match_id = last_match_id
+            await self._container.upsert_item(record.to_dict())
             self._logger.info(f"Successfully updated last match ID for user {account_id}, player {followed_player_id}")
             
         except Exception as ex:

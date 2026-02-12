@@ -182,6 +182,20 @@ class CosmosDbUserService:
         except Exception as ex:
             self._logger.error(f"Error getting friend {followed_player_id} for user {account_id}: {ex}")
             raise
+
+    async def get_friend_by_steam_id_async(self, steam_id: int, friend_steam_id: int) -> Optional[Friend]:
+        account_id = self.steam_id_to_account_id(steam_id)
+        friend_account_id = self.steam_id_to_account_id(friend_steam_id)
+        return await self.get_friend_async(account_id, friend_account_id)
+
+    async def update_friend_async(self, friend: Friend):
+        try:
+            self._logger.info(f"Updating friend {friend.id} for user {friend.user_id}")
+            await self._container.upsert_item(friend.to_dict())
+            self._logger.info(f"Successfully updated friend {friend.id} for user {friend.user_id}")
+        except Exception as ex:
+            self._logger.error(f"Error updating friend {friend.id} for user {friend.user_id}: {ex}")
+            raise
     
     async def update_last_match_id(self, account_id: int, followed_player_id: int, last_match_id: int):
         try:

@@ -35,7 +35,8 @@ class SteamClient:
             params={"steamid": steam_id, "key": self.api_key, "relationship": "friend"}
         )
         response.raise_for_status()
-        return response.json()
+        data = response.json()
+        return [friend["steamid"] for friend in data.get("friendslist", {}).get("friends", [])]
 
     async def get_match_history(self, steam_id: str, matches_requested: int | None = None) -> tuple[dict, bool]:
         params = {"account_id": steam_id, "key": self.api_key}

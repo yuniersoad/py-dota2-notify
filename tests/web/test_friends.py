@@ -3,6 +3,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from dota2_notify.web import friends
 from unittest.mock import AsyncMock, MagicMock
+from dota2_notify.models.steam_player_summary import SteamPlayerSummary
 
 
 def test_get_friends_with_authenticated_user():
@@ -22,43 +23,37 @@ def test_get_friends_with_authenticated_user():
     mock_user_service.get_user_with_steam_id_async = AsyncMock(
         return_value={"steam_id": int(test_steam_id), "name": "TestUser"}
     )
+    mock_user_service.get_friends_async = AsyncMock(
+        return_value=[]
+    )
     
     # Mock steam_client
     mock_steam_client = MagicMock()
-    mock_steam_client.get_friend_list = AsyncMock(
-        return_value={
-            "friendslist": {
-                "friends": [
-                    {"steamid": "76561198111111111"},
-                    {"steamid": "76561198222222222"},
-                    {"steamid": "76561198333333333"}
-                ]
-            }
-        }
-    )
+    mock_steam_client.get_friend_list = AsyncMock(return_value=["76561198111111111", "76561198222222222", "76561198333333333"])
+
     mock_steam_client.get_player_summaries = AsyncMock(
         return_value=[
-            {
-                "steamid": "76561198111111111",
-                "personaname": "Friend1",
-                "avatar": "https://avatar.example.com/friend1.jpg",
-                "avatarmedium": "https://avatar.example.com/friend1_medium.jpg",
-                "avatarfull": "https://avatar.example.com/friend1_full.jpg"
-            },
-            {
-                "steamid": "76561198222222222",
-                "personaname": "Friend2",
-                "avatar": "https://avatar.example.com/friend2.jpg",
-                "avatarmedium": "https://avatar.example.com/friend2_medium.jpg",
-                "avatarfull": "https://avatar.example.com/friend2_full.jpg"
-            },
-            {
-                "steamid": "76561198333333333",
-                "personaname": "Friend3",
-                "avatar": "https://avatar.example.com/friend3.jpg",
-                "avatarmedium": "https://avatar.example.com/friend3_medium.jpg",
-                "avatarfull": "https://avatar.example.com/friend3_full.jpg"
-            }
+            SteamPlayerSummary(
+                steamid="76561198111111111",
+                personaname="Friend1",
+                avatar="https://avatar.example.com/friend1.jpg",
+                avatarmedium="https://avatar.example.com/friend1_medium.jpg",
+                avatarfull="https://avatar.example.com/friend1_full.jpg"
+            ),
+            SteamPlayerSummary(
+                steamid="76561198222222222",
+                personaname="Friend2",
+                avatar="https://avatar.example.com/friend2.jpg",
+                avatarmedium="https://avatar.example.com/friend2_medium.jpg",
+                avatarfull="https://avatar.example.com/friend2_full.jpg"
+            ),
+            SteamPlayerSummary(
+                steamid="76561198333333333",
+                personaname="Friend3",
+                avatar="https://avatar.example.com/friend3.jpg",
+                avatarmedium="https://avatar.example.com/friend3_medium.jpg",
+                avatarfull="https://avatar.example.com/friend3_full.jpg"
+            )
         ]
     )
     

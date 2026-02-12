@@ -34,6 +34,11 @@
     </header>
     
     <main class="container">
+        {% if flash_message %}
+            <div class="flash-message" style="background-color: #f8d7da; color: #721c24; padding: 10px; margin-bottom: 20px; border: 1px solid #f5c6cb; border-radius: 4px;">
+                {{ flash_message }}
+            </div>
+        {% endif %}
         {% block content %}
         <h2>Welcome to Dota2Notify</h2>
         <div class="info-box">

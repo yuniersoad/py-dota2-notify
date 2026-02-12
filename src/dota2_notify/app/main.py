@@ -1,6 +1,6 @@
 import os
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from dota2_notify.web import auth, health, friends, static
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from dotenv import load_dotenv
@@ -71,6 +71,19 @@ async def lifespan(app: FastAPI):
     await http_client.aclose()
 
 app = FastAPI(lifespan=lifespan)
+
+@app.middleware("http")
+async def flash_message_middleware(request: Request, call_next):
+    flash_message = request.cookies.get("flash_message")
+    if flash_message:
+        request.state.flash_message = flash_message
+    
+    response = await call_next(request)
+    
+    if flash_message:
+        response.delete_cookie("flash_message")
+                
+    return response
 
 app.include_router(health.router)
 app.include_router(friends.router)

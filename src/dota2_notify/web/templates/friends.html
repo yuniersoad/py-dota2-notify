@@ -6,10 +6,29 @@
 
 {% block content %}
     {% if steam_id %}
-        <h2>Friends List</h2>
+        <h2>Following</h2>
         <ul>
-        {% for friend in friends %}
-                <li><img src="{{ friend.avatar }}" alt="Avatar" style="width: 32px; height: 32px; vertical-align: middle; margin-right: 8px;">{{ friend.personaname }}</li>
+        {% for friend in following %}
+                <li>
+                    <img src="{{ friend.avatar }}" alt="Avatar" style="width: 32px; height: 32px; vertical-align: middle; margin-right: 8px;">
+                    {{ friend.personaname }}
+                    <form action="/unfollow/{{ friend.steamid }}" method="post" style="display: inline;">
+                        <button type="submit">Unfollow</button>
+                    </form>
+                </li>
+        {% endfor %}
+        </ul>
+
+        <h2>Not Following</h2>
+        <ul>
+        {% for friend in not_following %}
+                <li>
+                    <img src="{{ friend.avatar }}" alt="Avatar" style="width: 32px; height: 32px; vertical-align: middle; margin-right: 8px;">
+                    {{ friend.personaname }}
+                    <form action="/follow/{{ friend.steamid }}" method="post" style="display: inline;">
+                        <button type="submit">Follow</button>
+                    </form>
+                </li>
         {% endfor %}
         </ul>
     {% else %}

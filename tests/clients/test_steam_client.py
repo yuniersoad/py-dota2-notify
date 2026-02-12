@@ -28,10 +28,10 @@ async def test_get_friends(httpx_mock):
         steam_client = SteamClient(api_key="dummy_key", client=client)
         response = await steam_client.get_friend_list(steam_id="76561198882123456")
         
-        assert "friendslist" in response
-        assert len(response["friendslist"]["friends"]) == 2
-        assert response["friendslist"]["friends"][0]["steamid"] == "76561198098445678"
-        assert response["friendslist"]["friends"][1]["steamid"] == "76561198153901234"
+        
+        assert len(response) == 2
+        assert response[0] == "76561198098445678"
+        assert response[1] == "76561198153901234"
 
 
 @pytest.mark.asyncio

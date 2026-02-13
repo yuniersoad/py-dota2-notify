@@ -231,3 +231,125 @@ async def test_update_last_match_id_for_friend():
             assert upserted_data["lastMatchId"] == 9999999999
             assert upserted_data["id"] == "1111263425"
             assert upserted_data["userId"] == 123
+
+@pytest.mark.asyncio
+async def test_create_user_async():
+    account_id = 12345
+    name = "NewUser"
+
+    mock_container = AsyncMock()
+    # create_item returns the created item.
+    mock_container.create_item.return_value = {
+        "id": str(account_id),
+        "userId": account_id,
+        "name": name,
+        "telegramChatId": "",
+        "following": True,
+        "type": "user"
+    }
+
+    with patch('dota2_notify.clients.cosmosdb_client.CosmosClient') as MockCosmosClient:
+        mock_client_instance = MockCosmosClient.return_value
+        mock_database = mock_client_instance.get_database_client.return_value
+        mock_database.get_container_client.return_value = mock_container
+        mock_client_instance.close = AsyncMock()
+
+        async with CosmosDbUserService(
+            connection_endpoint="https://fake-endpoint.documents.azure.com:443/",
+            key="fake-key",
+            database_name="test-db",
+            container_name="test-container"
+        ) as service:
+            user = await service.create_user_async(account_id, name)
+
+            assert user.user_id == account_id
+            assert user.name == name
+            assert user.telegram_chat_id == ""
+            assert user.following is True
+            assert user.type == "user"
+
+            mock_container.create_item.assert_awaited_once()
+            called_args = mock_container.create_item.call_args[0][0]
+            assert called_args["id"] == str(account_id)
+            assert called_args["userId"] == account_id
+            assert called_args["name"] == name
+
+@pytest.mark.asyncio
+async def test_get_friend_by_steam_id_async():
+    steam_id_offset = 76561197960265728
+    user_steam_id = steam_id_offset + 123
+    friend_steam_id = steam_id_offset + 456
+    
+    expected_friend_data = {
+        "id": "456",
+        "userId": 123,
+        "name": "Friend Steam",
+        "lastMatchId": 1000,
+        "following": True,
+        "type": "friend"
+    }
+
+    async def mock_query_iterator(*args, **kwargs):
+        yield expected_friend_data
+
+    mock_container = MagicMock()
+    mock_container.query_items.side_effect = mock_query_iterator
+    
+    with patch('dota2_notify.clients.cosmosdb_client.CosmosClient') as MockCosmosClient:
+        mock_client_instance = MockCosmosClient.return_value
+        mock_database = mock_client_instance.get_database_client.return_value
+        mock_database.get_container_client.return_value = mock_container
+        mock_client_instance.close = AsyncMock()
+        
+        async with CosmosDbUserService(
+            connection_endpoint="https://fake-endpoint.documents.azure.com:443/",
+            key="fake-key",
+            database_name="test-db",
+            container_name="test-container"
+        ) as service:
+            friend = await service.get_friend_by_steam_id_async(user_steam_id, friend_steam_id)
+            
+            assert friend is not None
+            assert friend.id == "456"
+            assert friend.user_id == 123
+            
+            mock_container.query_items.assert_called_once()
+            call_kwargs = mock_container.query_items.call_args[1]
+            parameters = call_kwargs['parameters']
+            
+            # Verify parameters contain the converted account IDs
+            user_id_param = next(p for p in parameters if p['name'] == '@userId')
+            friend_id_param = next(p for p in parameters if p['name'] == '@friendId')
+            
+            assert user_id_param['value'] == 123
+            assert friend_id_param['value'] == "456"
+
+@pytest.mark.asyncio
+async def test_update_friend_async():
+    friend = Friend(
+        id="789",
+        user_id=123,
+        name="Updated Friend",
+        last_match_id=2000,
+        following=True,
+        type="friend"
+    )
+    
+    mock_container = AsyncMock()
+    mock_container.upsert_item.return_value = friend.to_dict()
+    
+    with patch('dota2_notify.clients.cosmosdb_client.CosmosClient') as MockCosmosClient:
+        mock_client_instance = MockCosmosClient.return_value
+        mock_database = mock_client_instance.get_database_client.return_value
+        mock_database.get_container_client.return_value = mock_container
+        mock_client_instance.close = AsyncMock()
+        
+        async with CosmosDbUserService(
+            connection_endpoint="https://fake-endpoint.documents.azure.com:443/",
+            key="fake-key",
+            database_name="test-db",
+            container_name="test-container"
+        ) as service:
+            await service.update_friend_async(friend)
+            
+            mock_container.upsert_item.assert_awaited_once_with(friend.to_dict())

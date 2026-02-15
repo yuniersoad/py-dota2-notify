@@ -1,6 +1,4 @@
 import asyncio
-from azure.cosmos.aio import CosmosClient
-
 import logging
 from typing import Optional, List
 from azure.cosmos.aio import CosmosClient
@@ -12,21 +10,18 @@ class CosmosDbUserService:
     """Service for managing users in Cosmos DB."""
     STEAM_ID_OFFSET = 76561197960265728
     
-    def __init__(self, connection_endpoint: str, key: str, database_name: str, container_name: str):
+    def __init__(self, cosmosdb_client: CosmosClient, database_name: str, container_name: str):
         """
         Initialize the Cosmos DB user service.
         
         Args:
-            connection_endpoint: Cosmos DB connection endpoint
-            key: Cosmos DB key
+            cosmosdb_client: Cosmos DB client instance
             database_name: Name of the database
             container_name: Name of the container
         """
-        self._connection_endpoint = connection_endpoint
-        self._key = key
+        self._client = cosmosdb_client
         self._database_name = database_name
         self._container_name = container_name
-        self._client: Optional[CosmosClient] = None
         self._container = None
         self._logger = logging.getLogger(__name__)
     
@@ -47,8 +42,7 @@ class CosmosDbUserService:
     
     async def connect(self):
         """Establish connection to Cosmos DB."""
-        if self._client is None:
-            self._client = CosmosClient(self._connection_endpoint, credential=self._key)
+        if self._client:
             database = self._client.get_database_client(self._database_name)
             self._container = database.get_container_client(self._container_name)
             self._logger.info(f"Connected to Cosmos DB: {self._database_name}/{self._container_name}")

@@ -3,11 +3,11 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from dota2_notify.web import auth, health, friends, static
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from azure.cosmos.aio import CosmosClient
 from dotenv import load_dotenv
 import logging
 
 import httpx
-    
 from dota2_notify.app.match_checker import check_new_matches
 from dota2_notify.clients.cosmosdb_client import CosmosDbUserService 
 from dota2_notify.clients.opendota_client import OpenDotaClient
@@ -26,9 +26,9 @@ load_dotenv()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    cosmosdb_client = CosmosClient(os.getenv("COSMOSDB__ENDPOINTURI"), os.getenv("COSMOSDB__PRIMARYKEY"))
     db_client = CosmosDbUserService(
-        connection_endpoint=os.getenv("COSMOSDB__ENDPOINTURI"),
-        key=os.getenv("COSMOSDB__PRIMARYKEY"),
+        cosmosdb_client=cosmosdb_client,
         database_name=os.getenv("COSMOSDB__DATABASENAME"),
         container_name=os.getenv("COSMOSDB__CONTAINERNAME")
     )    

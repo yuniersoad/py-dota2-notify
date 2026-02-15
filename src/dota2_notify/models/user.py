@@ -1,6 +1,12 @@
 from dataclasses import dataclass, field
-from typing import List
 
+STEAM_ID_OFFSET = 76561197960265728
+
+def steam_id_to_account_id(steam_id: int) -> int:
+    return steam_id - STEAM_ID_OFFSET
+
+def account_id_to_steam_id(account_id: int) -> int:
+    return account_id + STEAM_ID_OFFSET
 
 @dataclass
 class Friend:

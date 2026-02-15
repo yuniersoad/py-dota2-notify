@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException, Request, Depends, status as http_s
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 
-from dota2_notify.models.user import Friend
+from dota2_notify.models.user import Friend, steam_id_to_account_id
 from .auth import get_current_user
 
 router = APIRouter()
@@ -22,7 +22,7 @@ async def get_friends(request: Request,  steam_id: str = Depends(get_current_use
     not_following = []
     
     if steam_id is not None:
-        account_id = user_service.steam_id_to_account_id(int(steam_id))
+        account_id = steam_id_to_account_id(int(steam_id))
         
         user, friends_steam_ids, db_friends = await asyncio.gather(
             user_service.get_user_with_steam_id_async(int(steam_id)),
@@ -37,7 +37,7 @@ async def get_friends(request: Request,  steam_id: str = Depends(get_current_use
         following_map = {f.id: f.following for f in db_friends}
         
         for summary in player_summaries:
-            summary_account_id = str(user_service.steam_id_to_account_id(int(summary.steamid)))
+            summary_account_id = str(steam_id_to_account_id(int(summary.steamid)))
             is_following = following_map.get(summary_account_id, False)
             
             if is_following:
@@ -71,7 +71,7 @@ async def follow_friend(request: Request, friend_steam_id: int, steam_id: str = 
     friend = await user_service.get_friend_by_steam_id_async(int(steam_id), friend_steam_id)
     if friend is None:
         friend_list = await steam_client.get_friend_list(int(steam_id))
-        friend_account_id = user_service.steam_id_to_account_id(friend_steam_id)
+        friend_account_id = steam_id_to_account_id(friend_steam_id)
 
         if str(friend_steam_id) in friend_list: # it is a new friend that is not in the database yet, but is in the steam friend list
             friend_summary = await steam_client.get_player_summaries([str(friend_steam_id)])
@@ -85,7 +85,7 @@ async def follow_friend(request: Request, friend_steam_id: int, steam_id: str = 
 
             friend = Friend(
                 id=str(friend_account_id),
-                user_id=user_service.steam_id_to_account_id(int(steam_id)),
+                user_id=steam_id_to_account_id(int(steam_id)),
                 name=friend_summary[0].personaname if friend_summary else "Unknown",
                 last_match_id=last_match_response["result"]["matches"][0]["match_id"], #TODO make the response parsing into a class with the proper types and names
                 following=True

@@ -4,9 +4,8 @@ from fastapi.testclient import TestClient
 from dota2_notify.web import friends
 from unittest.mock import AsyncMock, MagicMock
 from dota2_notify.models.steam_player_summary import SteamPlayerSummary
-from dota2_notify.models.user import Friend
+from dota2_notify.models.user import Friend, steam_id_to_account_id
 
-STEAM_ID_OFFSET = 76561197960265728
 
 def test_get_friends_with_authenticated_user():
     """Test that / endpoint returns friends list for authenticated user"""
@@ -26,16 +25,15 @@ def test_get_friends_with_authenticated_user():
     mock_user_service.get_user_with_steam_id_async = AsyncMock(
         return_value={"steam_id": int(test_steam_id), "name": "TestUser"}
     )
-    # Configure steam_id_to_account_id
-    mock_user_service.steam_id_to_account_id = lambda sid: sid - STEAM_ID_OFFSET
+    
 
     # Create a friend that is being followed (Friend1)
     friend1_steam_id = 76561198111111111
-    friend1_account_id = friend1_steam_id - STEAM_ID_OFFSET
+    friend1_account_id = steam_id_to_account_id(friend1_steam_id)
     
     followed_friend = Friend(
         id=str(friend1_account_id),
-        user_id=int(test_steam_id) - STEAM_ID_OFFSET,
+        user_id=steam_id_to_account_id(int(test_steam_id)),
         name="Friend1",
         last_match_id=12345,
         following=True,
@@ -119,7 +117,6 @@ def test_follow_friend_happy_path_new_friend():
     mock_user_service = MagicMock()
     # Mock finding friend in DB returns None (create new friend path)
     mock_user_service.get_friend_by_steam_id_async = AsyncMock(return_value=None)
-    mock_user_service.steam_id_to_account_id = lambda sid: sid - STEAM_ID_OFFSET
     mock_user_service.update_friend_async = AsyncMock()
 
     # Mock steam_client
@@ -160,8 +157,8 @@ def test_follow_friend_happy_path_new_friend():
     mock_user_service.update_friend_async.assert_awaited_once()
     saved_friend = mock_user_service.update_friend_async.call_args[0][0]
     
-    assert saved_friend.user_id == int(test_steam_id) - STEAM_ID_OFFSET
-    assert saved_friend.id == str(int(friend_steam_id) - STEAM_ID_OFFSET)
+    assert saved_friend.user_id == steam_id_to_account_id(int(test_steam_id))
+    assert saved_friend.id == str(steam_id_to_account_id(int(friend_steam_id)))
     assert saved_friend.name == "New Friend"
     assert saved_friend.last_match_id == 123456789
     assert saved_friend.following is True
@@ -182,10 +179,10 @@ def test_unfollow_friend_happy_path():
     mock_user_service = MagicMock()
     
     # Existing friend that is being followed
-    friend_account_id = int(friend_steam_id) - STEAM_ID_OFFSET
+    friend_account_id = steam_id_to_account_id(int(friend_steam_id))
     existing_friend = Friend(
         id=str(friend_account_id),
-        user_id=int(test_steam_id) - STEAM_ID_OFFSET,
+        user_id=steam_id_to_account_id(int(test_steam_id)),
         name="Friend To Unfollow",
         last_match_id=12345,
         following=True,

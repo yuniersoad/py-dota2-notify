@@ -3,12 +3,11 @@ import logging
 from typing import Optional, List
 from azure.cosmos.aio import CosmosClient
 from azure.cosmos import exceptions
-from dota2_notify.models.user import User, Friend
+from dota2_notify.models.user import User, Friend, steam_id_to_account_id
 
 
 class CosmosDbUserService:
     """Service for managing users in Cosmos DB."""
-    STEAM_ID_OFFSET = 76561197960265728
     
     def __init__(self, cosmosdb_client: CosmosClient, database_name: str, container_name: str):
         """
@@ -33,12 +32,6 @@ class CosmosDbUserService:
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         """Async context manager exit."""
         await self.close()
-    
-    def steam_id_to_account_id(self, steam_id: int) -> int:
-        return steam_id - self.STEAM_ID_OFFSET
-    
-    def account_id_to_steam_id(self, account_id: int) -> int:
-        return account_id + self.STEAM_ID_OFFSET
     
     async def connect(self):
         """Establish connection to Cosmos DB."""
@@ -77,7 +70,7 @@ class CosmosDbUserService:
             raise
     
     async def create_user_with_steam_id_async(self, steam_id: int, name: str) -> User:
-        account_id = self.steam_id_to_account_id(steam_id)
+        account_id = steam_id_to_account_id(steam_id)
         return await self.create_user_async(account_id, name)
     
     async def get_user_async(self, account_id: int) -> Optional[User]:
@@ -100,7 +93,7 @@ class CosmosDbUserService:
             raise
     
     async def get_user_with_steam_id_async(self, steam_id: int) -> Optional[User]:
-        account_id = self.steam_id_to_account_id(steam_id)
+        account_id = steam_id_to_account_id(steam_id)
         return await self.get_user_async(account_id)
     
     async def get_all_users_async(self) -> List[User]:
@@ -178,8 +171,8 @@ class CosmosDbUserService:
             raise
 
     async def get_friend_by_steam_id_async(self, steam_id: int, friend_steam_id: int) -> Optional[Friend]:
-        account_id = self.steam_id_to_account_id(steam_id)
-        friend_account_id = self.steam_id_to_account_id(friend_steam_id)
+        account_id = steam_id_to_account_id(steam_id)
+        friend_account_id = steam_id_to_account_id(friend_steam_id)
         return await self.get_friend_async(account_id, friend_account_id)
 
     async def update_friend_async(self, friend: Friend):

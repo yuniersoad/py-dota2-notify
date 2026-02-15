@@ -89,8 +89,20 @@ async def test_validate_auth_request(httpx_mock):
             "openid.claimed_id": "https://steamcommunity.com/openid/id/76561198882123456"
         }
         result = await steam_client.validate_auth_request(params)
-        
         assert result is True
+
+@pytest.mark.asyncio
+async def test_validate_auth_request_raises_error(httpx_mock):
+    httpx_mock.add_exception(httpx.RequestError("Connection failed"))
+
+    async with httpx.AsyncClient() as client:
+        steam_client = SteamClient(api_key="dummy_key", client=client)
+        params = {
+            "openid.ns": "http://specs.openid.net/auth/2.0",
+            "openid.claimed_id": "https://steamcommunity.com/openid/id/76561198882123456"
+        }
+        result = await steam_client.validate_auth_request(params)
+        assert result is False
 
 @pytest.mark.asyncio
 async def test_get_match_history_private_profile(httpx_mock):

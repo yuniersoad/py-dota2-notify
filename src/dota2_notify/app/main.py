@@ -38,7 +38,10 @@ async def lifespan(app: FastAPI):
 
      # Create httpx client with event hooks to redact sensitive data from logs
     async def log_request(request):
-        logging.info(f"HTTP Request: {request.method} {str(request.url).replace(os.getenv('TELEGRAM__BOTTOKEN', ''), '[REDACTED]')}")
+        url = str(request.url)
+        url = url.replace(os.getenv('TELEGRAM__BOTTOKEN', ''), '[REDACTED]')
+        url = url.replace(os.getenv('STEAM__APIKEY', ''), '[REDACTED]')
+        logging.info(f"HTTP Request: {request.method} {url}")
 
     async def log_response(response):
         logging.info(f"HTTP Response: {response.status_code}")

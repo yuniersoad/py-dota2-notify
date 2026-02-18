@@ -25,7 +25,8 @@ async def test_get_user_async():
     async with CosmosDbUserService(
         cosmosdb_client=mock_client_instance,
         database_name="test-db",
-        container_name="test-container"
+        user_container_name="test-container",
+        telegram_verify_token_container_name="test-telegram-container"
     ) as service:
         user = await service.get_user_async(account_id=123)
 
@@ -75,7 +76,8 @@ async def test_get_all_users_async():
     async with CosmosDbUserService(
         cosmosdb_client=mock_client_instance,
         database_name="test-db",
-        container_name="test-container"
+        user_container_name="test-container",
+        telegram_verify_token_container_name="test-telegram-container"
     ) as service:
         users = await service.get_all_users_async()
 
@@ -122,7 +124,8 @@ async def test_get_friends_async():
     async with CosmosDbUserService(
         cosmosdb_client=mock_client_instance,
         database_name="test-db",
-        container_name="test-container"
+        user_container_name="test-container",
+        telegram_verify_token_container_name="test-telegram-container"
     ) as service:
         friends = await service.get_friends_async(account_id=123)
 
@@ -168,7 +171,8 @@ async def test_get_friend_async():
     async with CosmosDbUserService(
         cosmosdb_client=mock_client_instance,
         database_name="test-db",
-        container_name="test-container"
+        user_container_name="test-container",
+        telegram_verify_token_container_name="test-telegram-container"
     ) as service:
         friend = await service.get_friend_async(account_id=123, followed_player_id=1111263425)
 
@@ -208,7 +212,8 @@ async def test_update_last_match_id_for_friend():
     async with CosmosDbUserService(
         cosmosdb_client=mock_client_instance,
         database_name="test-db",
-        container_name="test-container"
+        user_container_name="test-container",
+        telegram_verify_token_container_name="test-telegram-container"
     ) as service:
         await service.update_last_match_id(
             account_id=123,
@@ -234,6 +239,7 @@ async def test_create_user_async():
         "userId": account_id,
         "name": name,
         "telegramChatId": "",
+        "telegramVerifyToken": "ABCDEF",
         "following": True,
         "type": "user"
     }
@@ -246,9 +252,10 @@ async def test_create_user_async():
     async with CosmosDbUserService(
         cosmosdb_client=mock_client_instance,
         database_name="test-db",
-        container_name="test-container"
+        user_container_name="test-container",
+        telegram_verify_token_container_name="test-telegram-container"
     ) as service:
-        user = await service.create_user_async(account_id, name)
+        user = await service.create_user_async(account_id, name, "ABCDEF")
 
         assert user.user_id == account_id
         assert user.name == name
@@ -291,7 +298,8 @@ async def test_get_friend_by_steam_id_async():
     async with CosmosDbUserService(
         cosmosdb_client=mock_client_instance,
         database_name="test-db",
-        container_name="test-container"
+        user_container_name="test-container",
+        telegram_verify_token_container_name="test-telegram-container"
     ) as service:
         friend = await service.get_friend_by_steam_id_async(user_steam_id, friend_steam_id)
 
@@ -332,8 +340,47 @@ async def test_update_friend_async():
     async with CosmosDbUserService(
         cosmosdb_client=mock_client_instance,
         database_name="test-db",
-        container_name="test-container"
+        user_container_name="test-container",
+        telegram_verify_token_container_name="test-telegram-container"
     ) as service:
         await service.update_friend_async(friend)
 
         mock_container.upsert_item.assert_awaited_once_with(friend.to_dict())
+
+@pytest.mark.asyncio
+async def test_create_telegram_verify_token_async():
+    account_id = 12345
+
+    mock_user_container = AsyncMock()
+    mock_telegram_container = AsyncMock()
+    mock_telegram_container.create_item.return_value = {}
+
+    mock_client_instance = MagicMock()
+    mock_database = mock_client_instance.get_database_client.return_value
+    
+    def get_container_client_se(container_name):
+        if container_name == "test-user-container":
+            return mock_user_container
+        elif container_name == "test-telegram-container":
+            return mock_telegram_container
+        return AsyncMock()
+
+    mock_database.get_container_client.side_effect = get_container_client_se
+    mock_client_instance.close = AsyncMock()
+
+    async with CosmosDbUserService(
+        cosmosdb_client=mock_client_instance,
+        database_name="test-db",
+        user_container_name="test-user-container",
+        telegram_verify_token_container_name="test-telegram-container"
+    ) as service:
+        token = await service.create_telegram_verify_token_async(account_id)
+
+        assert isinstance(token, str)
+        assert len(token) == 6
+
+        mock_telegram_container.create_item.assert_awaited_once()
+        called_args = mock_telegram_container.create_item.call_args[0][0]
+        assert called_args["id"] == token
+        assert called_args["userId"] == account_id
+        assert called_args["token"] == token

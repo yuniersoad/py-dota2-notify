@@ -30,7 +30,8 @@ async def lifespan(app: FastAPI):
     db_client = CosmosDbUserService(
         cosmosdb_client=cosmosdb_client,
         database_name=os.getenv("COSMOSDB__DATABASENAME"),
-        container_name=os.getenv("COSMOSDB__CONTAINERNAME")
+        user_container_name=os.getenv("COSMOSDB__CONTAINERNAME"),
+        telegram_verify_token_container_name=os.getenv("COSMOSDB__TOKENCONTAINERNAME")
     )    
     await db_client.connect()
     app.state.user_service = db_client

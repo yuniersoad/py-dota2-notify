@@ -50,6 +50,7 @@ class User:
     user_id: int = 0
     name: str = ""
     telegram_chat_id: str = ""
+    telegram_verify_token: str = ""
     following: bool = True
     last_match_id: int = 0
     type: str = "user"
@@ -61,6 +62,7 @@ class User:
             "userId": self.user_id,
             "name": self.name,
             "telegramChatId": self.telegram_chat_id,
+            "telegramVerifyToken": self.telegram_verify_token,
             "type": self.type,
             "following": self.following,
             "lastMatchId": self.last_match_id
@@ -74,7 +76,35 @@ class User:
             user_id=data.get("userId", 0),
             name=data.get("name", ""),
             telegram_chat_id=data.get("telegramChatId", ""),
+            telegram_verify_token=data.get("telegramVerifyToken", ""),
             following=data.get("following", True),
             type=data.get("type", "user"),
             last_match_id=data.get("lastMatchId", 0)
+        )
+
+@dataclass
+class UserTelegramVerifyToken:
+    """Represents a Telegram verification token for a user."""
+    id: str = ""
+    user_id: int = 0
+    token: str = ""
+    type: str = "telegram_verify_token"
+
+    def to_dict(self) -> dict:
+        """Convert to dictionary for Cosmos DB serialization."""
+        return {
+            "id": self.id,
+            "userId": self.user_id,
+            "token": self.token,
+            "type": self.type
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "UserTelegramVerifyToken":
+        """Create instance from dictionary (Cosmos DB deserialization)."""
+        return cls(
+            id=data.get("id", ""),
+            user_id=data.get("userId", 0),
+            token=data.get("token", ""),
+            type=data.get("type", "telegram_verify_token")
         )

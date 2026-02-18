@@ -8,6 +8,8 @@ import re
 from datetime import datetime, timedelta, timezone
 from jose import jwt, JWTError
 
+from dota2_notify.models.user import steam_id_to_account_id
+
 steam_openid_url = "https://steamcommunity.com/openid/login"
 load_dotenv()
 jwt_secret_key = os.getenv("JWT__COOKIES__SECRET") # TODO: use pydantic settings
@@ -34,6 +36,8 @@ async def login(request: Request):
 
 @router.get("/steam/callback")
 async def steam_callback(request: Request):
+    user_service = request.app.state.user_service
+
     params = dict(request.query_params)
     
     # 1. Verification Step
@@ -45,13 +49,15 @@ async def steam_callback(request: Request):
     steam_id = re.search(r"id/(\d+)$", claimed_id).group(1)
 
     # 3. Fetch user from database or create a new one
-    user = await request.app.state.user_service.get_user_with_steam_id_async(int(steam_id))
+    user = await user_service.get_user_with_steam_id_async(int(steam_id))
     if user is None:
         logging.info(f"No existing user found with Steam ID {steam_id}. Creating new user.")
         steam_player_summaries = await request.app.state.steam_client.get_player_summaries([steam_id])
         player_summary = steam_player_summaries[0] if steam_player_summaries else None
         name = player_summary.personaname if player_summary else f"User{steam_id}"
-        user = await request.app.state.user_service.create_user_with_steam_id_async(int(steam_id), name)
+        account_id = steam_id_to_account_id(int(steam_id))
+        token = await user_service.create_telegram_verify_token_async(account_id)
+        user = await user_service.create_user_async(account_id, name, token)
     else:
         logging.info(f"User with Steam ID {steam_id} already exists in database with user ID {user.user_id}.")
 

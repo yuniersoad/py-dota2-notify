@@ -115,6 +115,10 @@ async def test_steam_callback_rejects_invalid_validation():
     mock_steam_client = MagicMock()
     mock_steam_client.validate_auth_request = AsyncMock(return_value=False)
     app.state.steam_client = mock_steam_client
+
+    mock_user_service = MagicMock()
+    mock_user_service.get_user_with_steam_id_async = AsyncMock(return_value=User.from_dict({"user_id": 52079950, "id": "52079950", "name": "TestUser"}))
+    app.state.user_service = mock_user_service 
     
     client = TestClient(app)
     
@@ -138,6 +142,78 @@ async def test_steam_callback_rejects_invalid_validation():
     
     # Verify the steam_client.validate_auth_request was called
     mock_steam_client.validate_auth_request.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_steam_callback_creates_new_user(monkeypatch):
+    """Test that /steam/callback creates a new user if one doesn't exist"""
+    test_jwt_secret = "test_secret_key_for_testing"
+    from dota2_notify.web import auth
+    monkeypatch.setattr(auth, "jwt_secret_key", test_jwt_secret)
+
+    app = FastAPI()
+    app.include_router(router)
+
+    mock_steam_client = MagicMock()
+    mock_steam_client.validate_auth_request = AsyncMock(return_value=True)
+    
+    # Mock get_player_summaries to return a mock player summary
+    mock_player_summary = MagicMock()
+    mock_player_summary.personaname = "NewTestUser"
+    mock_steam_client.get_player_summaries = AsyncMock(return_value=[mock_player_summary])
+    
+    app.state.steam_client = mock_steam_client
+
+    mock_user_service = MagicMock()
+    # Mock get_user_with_steam_id_async to return None, simulating a new user
+    mock_user_service.get_user_with_steam_id_async = AsyncMock(return_value=None)
+    
+    # Mock create_telegram_verify_token_async to return a dummy token
+    mock_user_service.create_telegram_verify_token_async = AsyncMock(return_value="ABCDEF")
+    
+    # Mock create_user_async to verify it's called correctly
+    mock_user_service.create_user_async = AsyncMock()
+
+    app.state.user_service = mock_user_service
+
+    client = TestClient(app)
+
+    test_steam_id = "76561198098765432"
+    
+    query_params = {
+        "openid.ns": "http://specs.openid.net/auth/2.0",
+        "openid.mode": "id_res",
+        "openid.claimed_id": f"https://steamcommunity.com/openid/id/{test_steam_id}",
+        "openid.identity": f"https://steamcommunity.com/openid/id/{test_steam_id}",
+    }
+
+    response = client.get("/auth/steam/callback", params=query_params, follow_redirects=False)
+
+    assert response.status_code == 307
+    assert response.headers["location"] == "/"
+
+    # Verify JWT cookie is set
+    assert cookie_name in response.cookies
+    token = response.cookies[cookie_name]
+    payload = jwt.decode(token, test_jwt_secret, algorithms=["HS256"])
+    assert payload["sub"] == test_steam_id
+
+    # Verify mocks were called
+    mock_steam_client.validate_auth_request.assert_called_once()
+    mock_user_service.get_user_with_steam_id_async.assert_called_once_with(int(test_steam_id))
+    mock_steam_client.get_player_summaries.assert_called_once_with([test_steam_id])
+    
+    # Verify that a telegram token was created for the new user
+    from dota2_notify.models.user import steam_id_to_account_id
+    expected_account_id = steam_id_to_account_id(int(test_steam_id))
+    mock_user_service.create_telegram_verify_token_async.assert_called_once_with(expected_account_id)
+    
+    # Verify that the user was created with the correct name and token
+    mock_user_service.create_user_async.assert_called_once_with(
+        expected_account_id,
+        "NewTestUser",
+        "ABCDEF"
+    )
 
 
 def test_logout_clears_cookie_and_redirects():

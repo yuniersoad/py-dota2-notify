@@ -16,7 +16,7 @@
                 </div>
                 {% if steam_id %}
                     <div style="display: flex; gap: 10px; align-items: center;">
-                        <a href="/profile" class="login-link">{{ user.name }}</a>
+                        <a href="/notifications" class="login-link">{{ user.name }}</a>
                         <a href="/auth/logout" class="login-link">Log Out</a>
                     </div>
                 {% else %}
@@ -27,8 +27,7 @@
             </div>
             <nav>
                 <a href="/">Home</a>
-                <a href="/users">Users</a>
-                <a href="/health">Health</a>
+                <a href="/notifications">Notifications</a>
             </nav>
         </div>
     </header>

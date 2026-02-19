@@ -1,7 +1,7 @@
 import os
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
-from dota2_notify.web import auth, health, friends, static
+from dota2_notify.web import auth, health, friends, static, notifications
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from azure.cosmos.aio import CosmosClient
 from dotenv import load_dotenv
@@ -92,6 +92,7 @@ async def flash_message_middleware(request: Request, call_next):
 app.include_router(health.router)
 app.include_router(friends.router)
 app.include_router(auth.router)
+app.include_router(notifications.router)
 app.mount("/static", static.static_files, name="static")
 
 def main():

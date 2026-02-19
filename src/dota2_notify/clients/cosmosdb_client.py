@@ -195,6 +195,15 @@ class CosmosDbUserService:
         except Exception as ex:
             self._logger.error(f"Error updating friend {friend.id} for user {friend.user_id}: {ex}")
             raise
+
+    async def update_user_async(self, user: User):
+        try:
+            self._logger.info(f"Updating user {user.user_id}")
+            await self._user_container.upsert_item(user.to_dict())
+            self._logger.info(f"Successfully updated user {user.user_id}")
+        except Exception as ex:
+            self._logger.error(f"Error updating user {user.user_id}: {ex}")
+            raise
     
     async def update_last_match_id(self, account_id: int, followed_player_id: int, last_match_id: int):
         try:
@@ -216,7 +225,10 @@ class CosmosDbUserService:
         except Exception as ex:
             self._logger.error(f"Error updating last match ID for user {account_id}, player {followed_player_id}: {ex}")
             raise
-    
+    ##
+    ## Telegram verification token management
+    ##
+
     async def create_telegram_verify_token_async(self, account_id: int) -> str:
         max_attempts = 5
         for attempt in range(1, max_attempts + 1):
@@ -239,3 +251,20 @@ class CosmosDbUserService:
             except Exception as ex:
                 self._logger.error(f"Error creating Telegram verification token for user {account_id}: {ex}")
                 raise
+    
+    async def get_user_id_by_telegram_token_async(self, token: str) -> Optional[int]:
+        try:
+            self._logger.info(f"Getting user ID by Telegram token {token}")
+            response = await self._telegram_verify_token_container.read_item(
+                item=token,
+                partition_key=token
+            )
+            user_id = response.get("userId")
+            self._logger.info(f"Successfully retrieved user ID {user_id} for Telegram token {token}")
+            return user_id
+        except exceptions.CosmosResourceNotFoundError:
+            self._logger.warning(f"Telegram token {token} not found")
+            return None
+        except Exception as ex:
+            self._logger.error(f"Error getting user ID by Telegram token {token}: {ex}")
+            raise

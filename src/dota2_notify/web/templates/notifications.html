@@ -1,0 +1,30 @@
+{% extends "template.html" %}
+
+{% block title %}Notifications{% endblock %}
+
+{% block content %}
+    <h2>Telegram Notifications</h2>
+
+    {% if verified %}
+        <div class="info-box">
+            <p>Your Telegram account is verified and connected.</p>
+            <p>You will receive notifications for your tracked friends' matches.</p>
+            <form action="/notifications/reset" method="post">
+                <button type="submit" class="button">Reset Connection</button>
+            </form>
+        </div>
+    {% else %}
+        <div class="info-box">
+            <p>Your Telegram account is not connected. To receive notifications, please follow one of the options below.</p>
+        </div>
+
+        <h3>Option 1: Direct Link</h3>
+        <p>Click the link below to open a chat with the Dota2Notify bot on Telegram and automatically send your verification token.</p>
+        <p><a href="https://t.me/yunier_bot?start={{ token }}" target="_blank" class="button">Verify with Telegram</a></p>
+
+        <h3>Option 2: Manual Verification</h3>
+        <p>1. Open Telegram and search for the bot: <strong>yunier_bot</strong></p>
+        <p>2. Start a chat with the bot and send the following command:</p>
+        <pre><code>/start {{ token }}</code></pre>
+    {% endif %}
+{% endblock %}

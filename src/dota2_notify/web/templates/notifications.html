@@ -8,6 +8,9 @@
     {% if verified %}
         <div class="info-box">
             <p>Your Telegram account is verified and connected.</p>
+            {% if user.telegram_username %}
+            <p>Connected as: <strong>@{{ user.telegram_username }}</strong></p>
+            {% endif %}
             <p>You will receive notifications for your tracked friends' matches.</p>
             <form action="/notifications/reset" method="post">
                 <button type="submit" class="button">Reset Connection</button>

@@ -50,6 +50,7 @@ class User:
     user_id: int = 0
     name: str = ""
     telegram_chat_id: str = ""
+    telegram_username: str = ""
     telegram_verify_token: str = ""
     following: bool = True
     last_match_id: int = 0
@@ -62,6 +63,7 @@ class User:
             "userId": self.user_id,
             "name": self.name,
             "telegramChatId": self.telegram_chat_id,
+            "telegramUsername": self.telegram_username,
             "telegramVerifyToken": self.telegram_verify_token,
             "type": self.type,
             "following": self.following,
@@ -76,6 +78,7 @@ class User:
             user_id=data.get("userId", 0),
             name=data.get("name", ""),
             telegram_chat_id=data.get("telegramChatId", ""),
+            telegram_username=data.get("telegramUsername", ""),
             telegram_verify_token=data.get("telegramVerifyToken", ""),
             following=data.get("following", True),
             type=data.get("type", "user"),

@@ -268,3 +268,17 @@ class CosmosDbUserService:
         except Exception as ex:
             self._logger.error(f"Error getting user ID by Telegram token {token}: {ex}")
             raise
+    
+    async def delete_telegram_verify_token_async(self, token: str):
+        try:
+            self._logger.info(f"Deleting Telegram verification token {token}")
+            await self._telegram_verify_token_container.delete_item(
+                item=token,
+                partition_key=token
+            )
+            self._logger.info(f"Successfully deleted Telegram verification token {token}")
+        except exceptions.CosmosResourceNotFoundError:
+            self._logger.warning(f"Telegram token {token} not found for deletion")
+        except Exception as ex:
+            self._logger.error(f"Error deleting Telegram verification token {token}: {ex}")
+            raise

@@ -31,3 +31,25 @@
         <pre><code>/start {{ token }}</code></pre>
     {% endif %}
 {% endblock %}
+
+{% block scripts %}
+    {% if not verified %}
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const interval = setInterval(function () {
+                fetch('/notifications/is_telegram_connected')
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.connected) {
+                            clearInterval(interval);
+                            window.location.reload();
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error polling for Telegram connection:', error);
+                    });
+            }, 5000); // Poll every 5 seconds
+        });
+    </script>
+    {% endif %}
+{% endblock %}

@@ -81,6 +81,19 @@ async def get_notifications(request: Request,  steam_id: str = Depends(get_curre
             "flash_message": flash_message
         })
 
+@router.get("/is_telegram_connected")
+async def is_telegram_connected(request: Request, steam_id: str = Depends(get_current_user)):
+    user_service = request.app.state.user_service
+    
+    if steam_id is None:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    
+    account_id = steam_id_to_account_id(int(steam_id))
+    user = await user_service.get_user_async(account_id)
+
+    return {"connected": bool(user.telegram_chat_id.strip())}
+
+
 @router.post("/telegram-webhook/74ad1s_{secret}")
 async def telegram_webhook(secret: str, update: TelegramUpdate, request: Request):
     user_service = request.app.state.user_service

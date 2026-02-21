@@ -56,6 +56,11 @@ class User:
     last_match_id: int = 0
     type: str = "user"
 
+    @property
+    def is_telegram_verified(self) -> bool:
+        """Check if the user has a verified Telegram chat ID."""
+        return bool(self.telegram_chat_id and self.telegram_chat_id.strip())
+
     def to_dict(self) -> dict:
         """Convert to dictionary for Cosmos DB serialization."""
         return {

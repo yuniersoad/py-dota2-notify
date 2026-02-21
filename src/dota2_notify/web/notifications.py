@@ -60,7 +60,7 @@ async def get_notifications(request: Request,  steam_id: str = Depends(get_curre
     account_id = steam_id_to_account_id(int(steam_id))
     user = await user_service.get_user_async(account_id)
 
-    verified = bool(user.telegram_chat_id.strip())
+    verified = user.is_telegram_verified
     if not verified:
         token = user.telegram_verify_token
         if not bool(token.strip()) or not (await user_service.get_user_id_by_telegram_token_async(token) == account_id):
@@ -91,7 +91,7 @@ async def is_telegram_connected(request: Request, steam_id: str = Depends(get_cu
     account_id = steam_id_to_account_id(int(steam_id))
     user = await user_service.get_user_async(account_id)
 
-    return {"connected": bool(user.telegram_chat_id.strip())}
+    return {"connected": user.is_telegram_verified}
 
 
 @router.post("/telegram-webhook/74ad1s_{secret}")

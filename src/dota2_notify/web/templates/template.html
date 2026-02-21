@@ -27,7 +27,9 @@
             </div>
             <nav>
                 <a href="/">Home</a>
-                <a href="/notifications">Notifications</a>
+                {% if steam_id %}
+                    <a href="/notifications">Notifications</a>
+                {% endif %}
             </nav>
         </div>
     </header>

@@ -5,6 +5,7 @@ from fastapi import FastAPI, Request
 from fastapi.testclient import TestClient
 from dota2_notify.models.user import User
 from dota2_notify.web.auth import router, cookie_name, get_current_user, create_access_token
+from dota2_notify.web.dependencies import get_user_service
 from urllib.parse import parse_qs, urlparse
 from jose import jwt
 
@@ -65,7 +66,11 @@ async def test_steam_callback_sets_jwt_cookie(monkeypatch):
     # mock the user_service assume the user does already exist
     mock_user_service = MagicMock()
     mock_user_service.get_user_with_steam_id_async = AsyncMock(return_value=User.from_dict({"user_id": 52079950, "id": "52079950", "name": "TestUser"}))
-    app.state.user_service = mock_user_service  
+    
+    async def mock_get_user_service():
+        return mock_user_service
+        
+    app.dependency_overrides[get_user_service] = mock_get_user_service  
     
     client = TestClient(app)
     
@@ -118,7 +123,11 @@ async def test_steam_callback_rejects_invalid_validation():
 
     mock_user_service = MagicMock()
     mock_user_service.get_user_with_steam_id_async = AsyncMock(return_value=User.from_dict({"user_id": 52079950, "id": "52079950", "name": "TestUser"}))
-    app.state.user_service = mock_user_service 
+    
+    async def mock_get_user_service():
+        return mock_user_service
+        
+    app.dependency_overrides[get_user_service] = mock_get_user_service 
     
     client = TestClient(app)
     
@@ -174,7 +183,10 @@ async def test_steam_callback_creates_new_user(monkeypatch):
     # Mock create_user_async to verify it's called correctly
     mock_user_service.create_user_async = AsyncMock()
 
-    app.state.user_service = mock_user_service
+    async def mock_get_user_service():
+        return mock_user_service
+
+    app.dependency_overrides[get_user_service] = mock_get_user_service
 
     client = TestClient(app)
 

@@ -5,6 +5,7 @@ from dota2_notify.web import friends
 from unittest.mock import AsyncMock, MagicMock
 from dota2_notify.models.steam_player_summary import SteamPlayerSummary
 from dota2_notify.models.user import Friend, steam_id_to_account_id
+from dota2_notify.web.dependencies import get_user_service
 
 
 def test_get_friends_with_authenticated_user():
@@ -20,11 +21,13 @@ def test_get_friends_with_authenticated_user():
         return test_steam_id
     
     # Mock user_service
-    
     mock_user_service = MagicMock()
     mock_user_service.get_user_with_steam_id_async = AsyncMock(
         return_value={"steam_id": int(test_steam_id), "name": "TestUser"}
     )
+    
+    async def mock_get_user_service():
+        return mock_user_service
     
 
     # Create a friend that is being followed (Friend1)
@@ -75,12 +78,12 @@ def test_get_friends_with_authenticated_user():
     )
     
     # Set up app state with mocked services
-    app.state.user_service = mock_user_service
     app.state.steam_client = mock_steam_client
     
     
     # Override the dependency
     app.dependency_overrides[friends.get_current_user] = mock_get_current_user
+    app.dependency_overrides[get_user_service] = mock_get_user_service
     
     client = TestClient(app)
     
@@ -119,6 +122,9 @@ def test_follow_friend_happy_path_new_friend():
     mock_user_service.get_friend_by_steam_id_async = AsyncMock(return_value=None)
     mock_user_service.update_friend_async = AsyncMock()
 
+    async def mock_get_user_service():
+        return mock_user_service
+
     # Mock steam_client
     mock_steam_client = MagicMock()
     # Friend is in the steam friend list
@@ -140,9 +146,9 @@ def test_follow_friend_happy_path_new_friend():
         return_value=({"result": {"matches": [{"match_id": 123456789}]}}, True)
     )
 
-    app.state.user_service = mock_user_service
     app.state.steam_client = mock_steam_client
     app.dependency_overrides[friends.get_current_user] = mock_get_current_user
+    app.dependency_overrides[get_user_service] = mock_get_user_service
 
     client = TestClient(app)
     
@@ -192,9 +198,12 @@ def test_unfollow_friend_happy_path():
     mock_user_service.get_friend_by_steam_id_async = AsyncMock(return_value=existing_friend)
     mock_user_service.update_friend_async = AsyncMock()
 
-    app.state.user_service = mock_user_service
+    async def mock_get_user_service():
+        return mock_user_service
+
     app.state.steam_client = MagicMock()
     app.dependency_overrides[friends.get_current_user] = mock_get_current_user
+    app.dependency_overrides[get_user_service] = mock_get_user_service
 
     client = TestClient(app)
     

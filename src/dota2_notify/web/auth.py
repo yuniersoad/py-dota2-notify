@@ -1,14 +1,16 @@
 import logging
 import os
 from dotenv import load_dotenv
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import RedirectResponse
 from urllib.parse import urlencode
 import re
 from datetime import datetime, timedelta, timezone
 from jose import jwt, JWTError
 
+from dota2_notify.clients.cosmosdb_client import CosmosDbUserService
 from dota2_notify.models.user import steam_id_to_account_id
+from .dependencies import get_user_service
 
 steam_openid_url = "https://steamcommunity.com/openid/login"
 load_dotenv()
@@ -35,9 +37,7 @@ async def login(request: Request):
     return RedirectResponse(url=redirect_url)
 
 @router.get("/steam/callback")
-async def steam_callback(request: Request):
-    user_service = request.app.state.user_service
-
+async def steam_callback(request: Request, user_service: CosmosDbUserService = Depends(get_user_service)):
     params = dict(request.query_params)
     
     # 1. Verification Step

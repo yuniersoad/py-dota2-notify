@@ -1,5 +1,7 @@
 import os
-from .dependencies import template_obj
+
+from dota2_notify.clients.cosmosdb_client import CosmosDbUserService
+from .dependencies import get_user_service, template_obj
 from fastapi import APIRouter, HTTPException, Request, Depends
 from .auth import get_current_user
 from dota2_notify.models.user import steam_id_to_account_id
@@ -34,11 +36,10 @@ router = APIRouter(prefix="/notifications")
 telegram_bot_token = os.getenv("TELEGRAM__BOTTOKEN") # TODO: use pydantic settings
 
 @router.post("/reset")
-async def reset_telegram_connection(request: Request, steam_id: str = Depends(get_current_user)):
+async def reset_telegram_connection(request: Request, steam_id: str = Depends(get_current_user), user_service: CosmosDbUserService = Depends(get_user_service)):
     if steam_id is None:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
-    user_service = request.app.state.user_service
     account_id = steam_id_to_account_id(int(steam_id))
     user = await user_service.get_user_async(account_id)
 
@@ -51,9 +52,7 @@ async def reset_telegram_connection(request: Request, steam_id: str = Depends(ge
     return RedirectResponse(url="/notifications", status_code=303)
 
 @router.get("/")
-async def get_notifications(request: Request,  steam_id: str = Depends(get_current_user)):
-    user_service = request.app.state.user_service
-    
+async def get_notifications(request: Request,  steam_id: str = Depends(get_current_user), user_service: CosmosDbUserService = Depends(get_user_service)):
     if steam_id is None:
         raise HTTPException(status_code=401, detail="Unauthorized")
     
@@ -82,9 +81,7 @@ async def get_notifications(request: Request,  steam_id: str = Depends(get_curre
         })
 
 @router.get("/is_telegram_connected")
-async def is_telegram_connected(request: Request, steam_id: str = Depends(get_current_user)):
-    user_service = request.app.state.user_service
-    
+async def is_telegram_connected(request: Request, steam_id: str = Depends(get_current_user), user_service: CosmosDbUserService = Depends(get_user_service)):
     if steam_id is None:
         raise HTTPException(status_code=401, detail="Unauthorized")
     
@@ -95,8 +92,7 @@ async def is_telegram_connected(request: Request, steam_id: str = Depends(get_cu
 
 
 @router.post("/telegram-webhook/74ad1s_{secret}")
-async def telegram_webhook(secret: str, update: TelegramUpdate, request: Request):
-    user_service = request.app.state.user_service
+async def telegram_webhook(secret: str, update: TelegramUpdate, user_service: CosmosDbUserService = Depends(get_user_service)):
     
     if secret != telegram_bot_token:
         raise HTTPException(status_code=401, detail="Unauthorized")

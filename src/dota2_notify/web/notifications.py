@@ -2,7 +2,7 @@ import os
 
 from dota2_notify.clients.cosmosdb_client import CosmosDbUserService
 from .dependencies import get_user_service, template_obj
-from fastapi import APIRouter, HTTPException, Request, Depends
+from fastapi import APIRouter, HTTPException, Request, Depends, status as http_status
 from .auth import get_current_user
 from dota2_notify.models.user import steam_id_to_account_id
 from fastapi.responses import RedirectResponse
@@ -36,9 +36,9 @@ router = APIRouter(prefix="/notifications")
 telegram_bot_token = os.getenv("TELEGRAM__BOTTOKEN") # TODO: use pydantic settings
 
 @router.post("/reset")
-async def reset_telegram_connection(request: Request, steam_id: str = Depends(get_current_user), user_service: CosmosDbUserService = Depends(get_user_service)):
+async def reset_telegram_connection(steam_id: str = Depends(get_current_user), user_service: CosmosDbUserService = Depends(get_user_service)):
     if steam_id is None:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+        return RedirectResponse(url="/", status_code=http_status.HTTP_303_SEE_OTHER)
 
     account_id = steam_id_to_account_id(int(steam_id))
     user = await user_service.get_user_async(account_id)
@@ -49,12 +49,12 @@ async def reset_telegram_connection(request: Request, steam_id: str = Depends(ge
         user.telegram_verify_token = new_token
         await user_service.update_user_async(user)
 
-    return RedirectResponse(url="/notifications", status_code=303)
+    return RedirectResponse(url="/notifications", status_code=http_status.HTTP_303_SEE_OTHER)
 
 @router.get("/")
 async def get_notifications(request: Request,  steam_id: str = Depends(get_current_user), user_service: CosmosDbUserService = Depends(get_user_service)):
     if steam_id is None:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+        return RedirectResponse(url="/", status_code=http_status.HTTP_303_SEE_OTHER)
     
     account_id = steam_id_to_account_id(int(steam_id))
     user = await user_service.get_user_async(account_id)

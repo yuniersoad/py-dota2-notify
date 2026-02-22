@@ -16,7 +16,12 @@
                 </div>
                 {% if steam_id %}
                     <div style="display: flex; gap: 10px; align-items: center;">
-                        <a href="/notifications" class="login-link">{{ user.name }}</a>
+                        <a href="/notifications" class="login-link" style="display: flex; align-items: center; gap: 8px; text-decoration: none;">
+                            {% if current_user_summary %}
+                                <img src="{{ current_user_summary.avatar }}" alt="Avatar" style="width: 32px; height: 32px; border-radius: 50%;">
+                            {% endif %}
+                            <span>{{ user.name }}</span>
+                        </a>
                         <a href="/auth/logout" class="login-link">Log Out</a>
                     </div>
                 {% else %}

@@ -58,6 +58,12 @@ async def get_notifications(request: Request,  steam_id: str = Depends(get_curre
     
     account_id = steam_id_to_account_id(int(steam_id))
     user = await user_service.get_user_async(account_id)
+    
+    steam_client = request.app.state.steam_client
+    current_user_summary = None
+    current_user_summary_list = await steam_client.get_player_summaries([steam_id])
+    if current_user_summary_list:
+        current_user_summary = current_user_summary_list[0]
 
     verified = user.is_telegram_verified
     if not verified:
@@ -75,6 +81,7 @@ async def get_notifications(request: Request,  steam_id: str = Depends(get_curre
         { 
             "steam_id": steam_id, 
             "user": user,
+            "current_user_summary": current_user_summary,
             "verified": verified,
             "token": user.telegram_verify_token,
             "flash_message": flash_message

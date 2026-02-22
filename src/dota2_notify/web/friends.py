@@ -61,7 +61,7 @@ async def follow_friend(request: Request, friend_steam_id: int, steam_id: str = 
     steam_client = request.app.state.steam_client
 
     if steam_id is None:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+        return RedirectResponse(url="/", status_code=http_status.HTTP_303_SEE_OTHER)
     
 
     friend = await user_service.get_friend_by_steam_id_async(int(steam_id), friend_steam_id)
@@ -97,7 +97,7 @@ async def follow_friend(request: Request, friend_steam_id: int, steam_id: str = 
 @router.post("/unfollow/{friend_steam_id}")
 async def unfollow_friend(friend_steam_id: int, steam_id: str = Depends(get_current_user), user_service: CosmosDbUserService = Depends(get_user_service)):
     if steam_id is None:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+        return RedirectResponse(url="/", status_code=http_status.HTTP_303_SEE_OTHER)
     
     friend = await user_service.get_friend_by_steam_id_async(int(steam_id), friend_steam_id)
     if friend is None:

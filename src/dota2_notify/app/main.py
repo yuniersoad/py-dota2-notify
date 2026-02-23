@@ -1,3 +1,5 @@
+from dota2_notify.app.config import Settings, get_settings
+from fastapi import Depends
 import os
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
@@ -26,12 +28,13 @@ load_dotenv()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    cosmosdb_client = CosmosClient(os.getenv("COSMOSDB__ENDPOINTURI"), os.getenv("COSMOSDB__PRIMARYKEY"))
+    settings = get_settings()
+    cosmosdb_client = CosmosClient(settings.cosmosdb_endpoint_uri, settings.cosmosdb_primary_key)
     db_client = CosmosDbUserService(
         cosmosdb_client=cosmosdb_client,
-        database_name=os.getenv("COSMOSDB__DATABASENAME"),
-        user_container_name=os.getenv("COSMOSDB__CONTAINERNAME"),
-        telegram_verify_token_container_name=os.getenv("COSMOSDB__TOKENCONTAINERNAME")
+        database_name=settings.cosmosdb_database_name,
+        user_container_name=settings.cosmosdb_container_name,
+        telegram_verify_token_container_name=settings.cosmosdb_token_container_name
     )    
     await db_client.connect()
     app.state.user_service = db_client
@@ -40,8 +43,8 @@ async def lifespan(app: FastAPI):
      # Create httpx client with event hooks to redact sensitive data from logs
     async def log_request(request):
         url = str(request.url)
-        url = url.replace(os.getenv('TELEGRAM__BOTTOKEN', ''), '[REDACTED]')
-        url = url.replace(os.getenv('STEAM__APIKEY', ''), '[REDACTED]')
+        url = url.replace(settings.telegram_bot_token, '[REDACTED]')
+        url = url.replace(settings.steam_api_key, '[REDACTED]')
         logging.info(f"HTTP Request: {request.method} {url}")
 
     async def log_response(response):
@@ -51,14 +54,13 @@ async def lifespan(app: FastAPI):
         event_hooks={'request': [log_request], 'response': [log_response]}
     )
     open_dota_client = OpenDotaClient(client=http_client)    
-    telegram_client = TelegramClient(token=os.getenv("TELEGRAM__BOTTOKEN"), client=http_client)
-    steam_client = SteamClient(api_key=os.getenv("STEAM__APIKEY"),client=http_client)
+    telegram_client = TelegramClient(token=settings.telegram_bot_token, client=http_client)
+    steam_client = SteamClient(api_key=settings.steam_api_key,client=http_client)
     app.state.steam_client = steam_client
 
     scheduler = AsyncIOScheduler()
-    check_enabled = os.getenv("MATCHCHECK__ENABLED", "true").lower() in ("true", "1", "yes")
-    if check_enabled:
-        interval_minutes = int(os.getenv("MATCHCHECK__INTERVALMINUTES", "5"))
+    if settings.matchcheck_enabled:
+        interval_minutes = settings.matchcheck_interval_minutes
         logging.info(f"Match checking is enabled. Scheduling periodic match checks. Every {interval_minutes} minutes.")
         scheduler.add_job(check_new_matches, 'interval', minutes=interval_minutes, args=[db_client, open_dota_client, telegram_client])
         scheduler.start()
@@ -69,7 +71,7 @@ async def lifespan(app: FastAPI):
     yield
 
     # cleanup
-    if check_enabled:
+    if settings.matchcheck_enabled:
         scheduler.shutdown()
     await db_client.close()
     await http_client.aclose()

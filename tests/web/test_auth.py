@@ -4,6 +4,7 @@ from unittest.mock import AsyncMock, MagicMock
 from fastapi import FastAPI, Request
 from fastapi.testclient import TestClient
 from dota2_notify.models.user import User
+from dota2_notify.app.config import Settings, get_settings
 from dota2_notify.web.auth import router, cookie_name, get_current_user, create_access_token
 from dota2_notify.web.dependencies import get_user_service
 from urllib.parse import parse_qs, urlparse
@@ -45,14 +46,8 @@ def test_login_redirects_to_steam_openid():
 
 
 @pytest.mark.asyncio
-async def test_steam_callback_sets_jwt_cookie(monkeypatch):
+async def test_steam_callback_sets_jwt_cookie():
     """Test that /steam/callback validates, extracts Steam ID, and sets a JWT cookie"""
-    # Set up test JWT secret by patching the module variable
-    test_jwt_secret = "test_secret_key_for_testing"
-    
-    # Import auth module to patch its jwt_secret_key
-    from dota2_notify.web import auth
-    monkeypatch.setattr(auth, "jwt_secret_key", test_jwt_secret)
     
     # Create app and add mocked steam_client to app state
     app = FastAPI()
@@ -71,6 +66,21 @@ async def test_steam_callback_sets_jwt_cookie(monkeypatch):
         return mock_user_service
         
     app.dependency_overrides[get_user_service] = mock_get_user_service  
+
+    def get_test_settings():
+        return Settings(
+            TELEGRAM__BOTTOKEN="fake",
+            COSMOSDB__ENDPOINTURI="fake",
+            COSMOSDB__PRIMARYKEY="fake",
+            COSMOSDB__DATABASENAME="fake",
+            COSMOSDB__CONTAINERNAME="fake",
+            COSMOSDB__TOKENCONTAINERNAME="fake",
+            MATCHCHECK__INTERVALMINUTES=1,
+            MATCHCHECK__ENABLED=False,
+            STEAM__APIKEY="fake",
+            JWT__COOKIES__SECRET="test_secret_key_for_testing"
+        )
+    app.dependency_overrides[get_settings] = get_test_settings
     
     client = TestClient(app)
     
@@ -97,7 +107,7 @@ async def test_steam_callback_sets_jwt_cookie(monkeypatch):
     token = response.cookies[cookie_name]
     
     # Decode and verify the JWT
-    payload = jwt.decode(token, test_jwt_secret, algorithms=["HS256"])
+    payload = jwt.decode(token, "test_secret_key_for_testing", algorithms=["HS256"])
     
     # Verify Steam ID is in the token
     assert payload["sub"] == test_steam_id
@@ -154,12 +164,8 @@ async def test_steam_callback_rejects_invalid_validation():
 
 
 @pytest.mark.asyncio
-async def test_steam_callback_creates_new_user(monkeypatch):
+async def test_steam_callback_creates_new_user():
     """Test that /steam/callback creates a new user if one doesn't exist"""
-    test_jwt_secret = "test_secret_key_for_testing"
-    from dota2_notify.web import auth
-    monkeypatch.setattr(auth, "jwt_secret_key", test_jwt_secret)
-
     app = FastAPI()
     app.include_router(router)
 
@@ -188,6 +194,21 @@ async def test_steam_callback_creates_new_user(monkeypatch):
 
     app.dependency_overrides[get_user_service] = mock_get_user_service
 
+    def get_test_settings():
+        return Settings(
+            TELEGRAM__BOTTOKEN="fake",
+            COSMOSDB__ENDPOINTURI="fake",
+            COSMOSDB__PRIMARYKEY="fake",
+            COSMOSDB__DATABASENAME="fake",
+            COSMOSDB__CONTAINERNAME="fake",
+            COSMOSDB__TOKENCONTAINERNAME="fake",
+            MATCHCHECK__INTERVALMINUTES=1,
+            MATCHCHECK__ENABLED=False,
+            STEAM__APIKEY="fake",
+            JWT__COOKIES__SECRET="test_secret_key_for_testing"
+        )
+    app.dependency_overrides[get_settings] = get_test_settings
+
     client = TestClient(app)
 
     test_steam_id = "76561198098765432"
@@ -207,7 +228,7 @@ async def test_steam_callback_creates_new_user(monkeypatch):
     # Verify JWT cookie is set
     assert cookie_name in response.cookies
     token = response.cookies[cookie_name]
-    payload = jwt.decode(token, test_jwt_secret, algorithms=["HS256"])
+    payload = jwt.decode(token, "test_secret_key_for_testing", algorithms=["HS256"])
     assert payload["sub"] == test_steam_id
 
     # Verify mocks were called
@@ -253,27 +274,35 @@ def test_logout_clears_cookie_and_redirects():
 
 
 @pytest.mark.asyncio
-async def test_get_current_user_with_valid_token(monkeypatch):
+async def test_get_current_user_with_valid_token():
     """Test that get_current_user returns steam_id from valid JWT cookie"""
-    # Set up test JWT secret by patching the module variable
-    test_jwt_secret = "test_secret_key_for_testing"
-    
-    # Import auth module to patch its jwt_secret_key
-    from dota2_notify.web import auth
-    monkeypatch.setattr(auth, "jwt_secret_key", test_jwt_secret)
     
     # Test Steam ID
     test_steam_id = "76561198012345678"
     
     # Create a valid JWT token
-    token = jwt.encode({"sub": test_steam_id}, test_jwt_secret, algorithm="HS256")
+    token = jwt.encode({"sub": test_steam_id}, "test_secret_key_for_testing", algorithm="HS256")
     
     # Create a mock request with the cookie
     mock_request = MagicMock(spec=Request)
     mock_request.cookies.get.return_value = token
     
+    def get_test_settings():
+        return Settings(
+            TELEGRAM__BOTTOKEN="fake",
+            COSMOSDB__ENDPOINTURI="fake",
+            COSMOSDB__PRIMARYKEY="fake",
+            COSMOSDB__DATABASENAME="fake",
+            COSMOSDB__CONTAINERNAME="fake",
+            COSMOSDB__TOKENCONTAINERNAME="fake",
+            MATCHCHECK__INTERVALMINUTES=1,
+            MATCHCHECK__ENABLED=False,
+            STEAM__APIKEY="fake",
+            JWT__COOKIES__SECRET="test_secret_key_for_testing"
+        )
+
     # Call get_current_user
-    result = await get_current_user(mock_request)
+    result = await get_current_user(mock_request, get_test_settings())
     
     # Verify it returns the correct steam_id
     assert result == test_steam_id

@@ -1,6 +1,4 @@
 import logging
-import os
-from dotenv import load_dotenv
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import RedirectResponse
 from urllib.parse import urlencode
@@ -8,13 +6,12 @@ import re
 from datetime import datetime, timedelta, timezone
 from jose import jwt, JWTError
 
+from dota2_notify.app.config import Settings, get_settings
 from dota2_notify.clients.cosmosdb_client import CosmosDbUserService
 from dota2_notify.models.user import steam_id_to_account_id
 from .dependencies import get_user_service
 
 steam_openid_url = "https://steamcommunity.com/openid/login"
-load_dotenv()
-jwt_secret_key = os.getenv("JWT__COOKIES__SECRET") # TODO: use pydantic settings
 cookie_name = "access_token"
 
 router = APIRouter(prefix="/auth")
@@ -37,7 +34,7 @@ async def login(request: Request):
     return RedirectResponse(url=redirect_url)
 
 @router.get("/steam/callback")
-async def steam_callback(request: Request, user_service: CosmosDbUserService = Depends(get_user_service)):
+async def steam_callback(request: Request, user_service: CosmosDbUserService = Depends(get_user_service), settings: Settings = Depends(get_settings)):
     params = dict(request.query_params)
     
     # 1. Verification Step
@@ -62,7 +59,7 @@ async def steam_callback(request: Request, user_service: CosmosDbUserService = D
         logging.info(f"User with Steam ID {steam_id} already exists in database with user ID {user.user_id}.")
 
     # 4. Create the JWT
-    token = create_access_token(data={"sub": steam_id})
+    token = create_access_token(data={"sub": steam_id}, jwt_secret_key=settings.jwt_cookies_secret)
 
     response = RedirectResponse(url="/")
     response.set_cookie(
@@ -82,13 +79,13 @@ async def logout():
     )
     return response
 
-async def get_current_user(request: Request) -> str | None:
+async def get_current_user(request: Request, settings: Settings = Depends(get_settings)) -> str | None:
     token = request.cookies.get(cookie_name)
     if not token:
         return None
     
     try:
-        payload = jwt.decode(token, jwt_secret_key, algorithms=[jwt.ALGORITHMS.HS256])
+        payload = jwt.decode(token, settings.jwt_cookies_secret, algorithms=[jwt.ALGORITHMS.HS256])
         steam_id: str = payload.get("sub")
         if steam_id is None:
            return None
@@ -96,7 +93,7 @@ async def get_current_user(request: Request) -> str | None:
     except JWTError:
         return None
 
-def create_access_token(data: dict):
+def create_access_token(data: dict, jwt_secret_key: str):
     to_encode = data.copy()
     expire = datetime.now(timezone.utc) + timedelta(minutes=120)
     to_encode.update({"exp": expire})

@@ -1,5 +1,4 @@
-import os
-
+from dota2_notify.app.config import Settings, get_settings
 from dota2_notify.clients.cosmosdb_client import CosmosDbUserService
 from .dependencies import get_user_service, template_obj
 from fastapi import APIRouter, HTTPException, Request, Depends, status as http_status
@@ -33,7 +32,6 @@ class TelegramUpdate(BaseModel):
     message: Optional[TelegramMessage] = None
 
 router = APIRouter(prefix="/notifications")
-telegram_bot_token = os.getenv("TELEGRAM__BOTTOKEN") # TODO: use pydantic settings
 
 @router.post("/reset")
 async def reset_telegram_connection(steam_id: str = Depends(get_current_user), user_service: CosmosDbUserService = Depends(get_user_service)):
@@ -99,9 +97,9 @@ async def is_telegram_connected(request: Request, steam_id: str = Depends(get_cu
 
 
 @router.post("/telegram-webhook/74ad1s_{secret}")
-async def telegram_webhook(secret: str, update: TelegramUpdate, user_service: CosmosDbUserService = Depends(get_user_service)):
+async def telegram_webhook(secret: str, update: TelegramUpdate, user_service: CosmosDbUserService = Depends(get_user_service), settings: Settings = Depends(get_settings)):
     
-    if secret != telegram_bot_token:
+    if secret != settings.telegram_bot_token:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
     if update.message and update.message.text and update.message.text.startswith("/start"):

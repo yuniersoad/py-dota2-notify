@@ -384,3 +384,174 @@ async def test_create_telegram_verify_token_async():
         assert called_args["id"] == token
         assert called_args["userId"] == account_id
         assert called_args["token"] == token
+
+@pytest.mark.asyncio
+async def test_get_user_id_by_telegram_token_async_happy_path():
+    token = "ABCDEF"
+    account_id = 12345
+    mock_response = {"userId": account_id}
+
+    mock_user_container = AsyncMock()
+    mock_telegram_container = AsyncMock()
+    mock_telegram_container.read_item.return_value = mock_response
+
+    mock_client_instance = MagicMock()
+    mock_database = mock_client_instance.get_database_client.return_value
+    
+    def get_container_client_se(container_name):
+        if container_name == "test-user-container":
+            return mock_user_container
+        elif container_name == "test-telegram-container":
+            return mock_telegram_container
+        return AsyncMock()
+
+    mock_database.get_container_client.side_effect = get_container_client_se
+    mock_client_instance.close = AsyncMock()
+
+    async with CosmosDbUserService(
+        cosmosdb_client=mock_client_instance,
+        database_name="test-db",
+        user_container_name="test-user-container",
+        telegram_verify_token_container_name="test-telegram-container"
+    ) as service:
+        user_id = await service.get_user_id_by_telegram_token_async(token)
+
+        assert user_id == account_id
+        mock_telegram_container.read_item.assert_awaited_once_with(item=token, partition_key=token)
+
+@pytest.mark.asyncio
+async def test_get_user_id_by_telegram_token_async_not_found():
+    token = "NOTFOUND"
+    
+    mock_user_container = AsyncMock()
+    mock_telegram_container = AsyncMock()
+    
+    # Import exception from the azure cosmos library
+    from azure.cosmos import exceptions
+    mock_telegram_container.read_item.side_effect = exceptions.CosmosResourceNotFoundError
+
+    mock_client_instance = MagicMock()
+    mock_database = mock_client_instance.get_database_client.return_value
+    
+    def get_container_client_se(container_name):
+        if container_name == "test-user-container":
+            return mock_user_container
+        elif container_name == "test-telegram-container":
+            return mock_telegram_container
+        return AsyncMock()
+
+    mock_database.get_container_client.side_effect = get_container_client_se
+    mock_client_instance.close = AsyncMock()
+
+    async with CosmosDbUserService(
+        cosmosdb_client=mock_client_instance,
+        database_name="test-db",
+        user_container_name="test-user-container",
+        telegram_verify_token_container_name="test-telegram-container"
+    ) as service:
+        user_id = await service.get_user_id_by_telegram_token_async(token)
+
+        assert user_id is None
+        mock_telegram_container.read_item.assert_awaited_once_with(item=token, partition_key=token)
+
+@pytest.mark.asyncio
+async def test_update_user_async_happy_path():
+    user_to_update = User(
+        id="123",
+        user_id=123,
+        name="TestUserUpdated",
+        telegram_chat_id="chat-789",
+        telegram_verify_token="new_token",
+        following=False,
+        type="user"
+    )
+
+    mock_user_container = AsyncMock()
+    mock_telegram_container = AsyncMock()
+
+    mock_client_instance = MagicMock()
+    mock_database = mock_client_instance.get_database_client.return_value
+    
+    def get_container_client_se(container_name):
+        if container_name == "test-user-container":
+            return mock_user_container
+        elif container_name == "test-telegram-container":
+            return mock_telegram_container
+        return AsyncMock()
+
+    mock_database.get_container_client.side_effect = get_container_client_se
+    mock_client_instance.close = AsyncMock()
+
+    async with CosmosDbUserService(
+        cosmosdb_client=mock_client_instance,
+        database_name="test-db",
+        user_container_name="test-user-container",
+        telegram_verify_token_container_name="test-telegram-container"
+    ) as service:
+        await service.update_user_async(user_to_update)
+
+        mock_user_container.upsert_item.assert_awaited_once_with(user_to_update.to_dict())
+
+@pytest.mark.asyncio
+async def test_delete_telegram_verify_token_async_happy_path():
+    token = "TOKEN_TO_DELETE"
+
+    mock_user_container = AsyncMock()
+    mock_telegram_container = AsyncMock()
+    mock_telegram_container.delete_item.return_value = None
+
+    mock_client_instance = MagicMock()
+    mock_database = mock_client_instance.get_database_client.return_value
+    
+    def get_container_client_se(container_name):
+        if container_name == "test-user-container":
+            return mock_user_container
+        elif container_name == "test-telegram-container":
+            return mock_telegram_container
+        return AsyncMock()
+
+    mock_database.get_container_client.side_effect = get_container_client_se
+    mock_client_instance.close = AsyncMock()
+
+    async with CosmosDbUserService(
+        cosmosdb_client=mock_client_instance,
+        database_name="test-db",
+        user_container_name="test-user-container",
+        telegram_verify_token_container_name="test-telegram-container"
+    ) as service:
+        await service.delete_telegram_verify_token_async(token)
+
+        mock_telegram_container.delete_item.assert_awaited_once_with(item=token, partition_key=token)
+
+@pytest.mark.asyncio
+async def test_delete_telegram_verify_token_async_not_found():
+    token = "NON_EXISTENT_TOKEN"
+
+    mock_user_container = AsyncMock()
+    mock_telegram_container = AsyncMock()
+    from azure.cosmos import exceptions
+    mock_telegram_container.delete_item.side_effect = exceptions.CosmosResourceNotFoundError
+
+    mock_client_instance = MagicMock()
+    mock_database = mock_client_instance.get_database_client.return_value
+    
+    def get_container_client_se(container_name):
+        if container_name == "test-user-container":
+            return mock_user_container
+        elif container_name == "test-telegram-container":
+            return mock_telegram_container
+        return AsyncMock()
+
+    mock_database.get_container_client.side_effect = get_container_client_se
+    mock_client_instance.close = AsyncMock()
+
+    async with CosmosDbUserService(
+        cosmosdb_client=mock_client_instance,
+        database_name="test-db",
+        user_container_name="test-user-container",
+        telegram_verify_token_container_name="test-telegram-container"
+    ) as service:
+        # This should not raise an exception
+        await service.delete_telegram_verify_token_async(token)
+
+        mock_telegram_container.delete_item.assert_awaited_once_with(item=token, partition_key=token)

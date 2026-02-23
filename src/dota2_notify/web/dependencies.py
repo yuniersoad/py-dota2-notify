@@ -7,3 +7,6 @@ template_obj = Jinja2Templates(directory=str(top / "templates"))
 
 def get_user_service(request: Request):
     return request.app.state.user_service
+
+def get_steam_client(request: Request):
+    return request.app.state.steam_client

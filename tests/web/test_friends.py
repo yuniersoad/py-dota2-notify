@@ -5,7 +5,7 @@ from dota2_notify.web import friends
 from unittest.mock import AsyncMock, MagicMock
 from dota2_notify.models.steam_player_summary import SteamPlayerSummary
 from dota2_notify.models.user import Friend, steam_id_to_account_id
-from dota2_notify.web.dependencies import get_user_service
+from dota2_notify.web.dependencies import get_user_service, get_steam_client
 
 
 def test_get_friends_with_authenticated_user():
@@ -77,13 +77,14 @@ def test_get_friends_with_authenticated_user():
         ]
     )
     
-    # Set up app state with mocked services
-    app.state.steam_client = mock_steam_client
     
-    
+    async def mock_get_steam_client():
+        return mock_steam_client
+
     # Override the dependency
     app.dependency_overrides[friends.get_current_user] = mock_get_current_user
     app.dependency_overrides[get_user_service] = mock_get_user_service
+    app.dependency_overrides[get_steam_client] = mock_get_steam_client
     
     client = TestClient(app)
     
@@ -146,9 +147,12 @@ def test_follow_friend_happy_path_new_friend():
         return_value=({"result": {"matches": [{"match_id": 123456789}]}}, True)
     )
 
-    app.state.steam_client = mock_steam_client
+    async def mock_get_steam_client():
+        return mock_steam_client
+
     app.dependency_overrides[friends.get_current_user] = mock_get_current_user
     app.dependency_overrides[get_user_service] = mock_get_user_service
+    app.dependency_overrides[get_steam_client] = mock_get_steam_client
 
     client = TestClient(app)
     

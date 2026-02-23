@@ -3,16 +3,20 @@ from fastapi import APIRouter, HTTPException, Request, Depends, status as http_s
 from fastapi.responses import RedirectResponse
 
 from dota2_notify.clients.cosmosdb_client import CosmosDbUserService
+from dota2_notify.clients.steam_client import SteamClient
 from dota2_notify.models.user import Friend, steam_id_to_account_id
 from .auth import get_current_user
-from .dependencies import get_user_service, template_obj
+from .dependencies import get_steam_client, get_user_service, template_obj
 
 router = APIRouter()
 
 
 @router.get("/")
-async def get_friends(request: Request,  steam_id: str = Depends(get_current_user), user_service: CosmosDbUserService = Depends(get_user_service)):
-    steam_client = request.app.state.steam_client
+async def get_friends(
+    request: Request,  
+    steam_id: str = Depends(get_current_user), 
+    user_service: CosmosDbUserService = Depends(get_user_service),
+    steam_client: SteamClient = Depends(get_steam_client)):
     
     user = None
     current_user_summary = None
@@ -63,9 +67,12 @@ async def get_friends(request: Request,  steam_id: str = Depends(get_current_use
     )
 
 @router.post("/follow/{friend_steam_id}")
-async def follow_friend(request: Request, friend_steam_id: int, steam_id: str = Depends(get_current_user), user_service: CosmosDbUserService = Depends(get_user_service)):
-    steam_client = request.app.state.steam_client
-
+async def follow_friend(
+    friend_steam_id: int, 
+    steam_id: str = Depends(get_current_user), 
+    user_service: CosmosDbUserService = Depends(get_user_service), 
+    steam_client: SteamClient = Depends(get_steam_client)):
+    
     if steam_id is None:
         return RedirectResponse(url="/", status_code=http_status.HTTP_303_SEE_OTHER)
     
@@ -101,7 +108,11 @@ async def follow_friend(request: Request, friend_steam_id: int, steam_id: str = 
     return RedirectResponse(url="/", status_code=http_status.HTTP_303_SEE_OTHER)
 
 @router.post("/unfollow/{friend_steam_id}")
-async def unfollow_friend(friend_steam_id: int, steam_id: str = Depends(get_current_user), user_service: CosmosDbUserService = Depends(get_user_service)):
+async def unfollow_friend(
+    friend_steam_id: int, 
+    steam_id: str = Depends(get_current_user), 
+    user_service: CosmosDbUserService = Depends(get_user_service)):
+    
     if steam_id is None:
         return RedirectResponse(url="/", status_code=http_status.HTTP_303_SEE_OTHER)
     

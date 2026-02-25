@@ -27,7 +27,7 @@ class SteamClient:
         response.raise_for_status()
         data = response.json()
         players_data = data.get("response", {}).get("players", [])
-        return [SteamPlayerSummary.from_dict(player) for player in players_data]
+        return [SteamPlayerSummary.model_validate(player) for player in players_data]
     
     async def get_friend_list(self, steam_id: str) -> list[str]:
         response = await self.client.get(

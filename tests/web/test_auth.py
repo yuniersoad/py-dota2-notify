@@ -60,7 +60,7 @@ async def test_steam_callback_sets_jwt_cookie():
 
     # mock the user_service assume the user does already exist
     mock_user_service = MagicMock()
-    mock_user_service.get_user_with_steam_id_async = AsyncMock(return_value=User.from_dict({"user_id": 52079950, "id": "52079950", "name": "TestUser"}))
+    mock_user_service.get_user_with_steam_id_async = AsyncMock(return_value=User.model_validate({"user_id": 52079950, "id": "52079950", "name": "TestUser"}))
     
     async def mock_get_user_service():
         return mock_user_service
@@ -132,7 +132,7 @@ async def test_steam_callback_rejects_invalid_validation():
     app.state.steam_client = mock_steam_client
 
     mock_user_service = MagicMock()
-    mock_user_service.get_user_with_steam_id_async = AsyncMock(return_value=User.from_dict({"user_id": 52079950, "id": "52079950", "name": "TestUser"}))
+    mock_user_service.get_user_with_steam_id_async = AsyncMock(return_value=User.model_validate({"user_id": 52079950, "id": "52079950", "name": "TestUser"}))
     
     async def mock_get_user_service():
         return mock_user_service

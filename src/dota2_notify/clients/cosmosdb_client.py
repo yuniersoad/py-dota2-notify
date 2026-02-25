@@ -71,7 +71,7 @@ class CosmosDbUserService:
         )
         try:
             self._logger.info(f"Creating user with Account ID {account_id}")
-            await self._user_container.create_item(user.to_dict())
+            await self._user_container.create_item(user.model_dump(by_alias=True))
             self._logger.info(f"Successfully created user {account_id}")
             return user
         except exceptions.CosmosResourceExistsError:
@@ -95,7 +95,7 @@ class CosmosDbUserService:
             )
             
             self._logger.info(f"Successfully retrieved user {account_id}")
-            return User.from_dict(response)
+            return User.model_validate(response)
             
         except exceptions.CosmosResourceNotFoundError:
             self._logger.warning(f"User {account_id} not found")
@@ -118,7 +118,7 @@ class CosmosDbUserService:
             async for item in self._user_container.query_items(
                 query=query
             ):
-                users.append(User.from_dict(item))
+                users.append(User.model_validate(item))
             
             self._logger.info(f"Retrieved {len(users)} users")
             return users
@@ -148,7 +148,7 @@ class CosmosDbUserService:
                 parameters=parameters,
                 partition_key=account_id
             ):
-                friends.append(Friend.from_dict(item))
+                friends.append(Friend.model_validate(item))
             
             self._logger.info(f"Retrieved {len(friends)} friends for user {account_id}")
             return friends
@@ -173,7 +173,7 @@ class CosmosDbUserService:
                 partition_key=account_id
             ):
                 self._logger.info(f"Successfully retrieved friend {followed_player_id} for user {account_id}")
-                return Friend.from_dict(item)
+                return Friend.model_validate(item)
             
             self._logger.warning(f"Friend {followed_player_id} not found for user {account_id}")
             return None
@@ -190,7 +190,7 @@ class CosmosDbUserService:
     async def update_friend_async(self, friend: Friend):
         try:
             self._logger.info(f"Updating friend {friend.id} for user {friend.user_id}")
-            await self._user_container.upsert_item(friend.to_dict())
+            await self._user_container.upsert_item(friend.model_dump(by_alias=True))
             self._logger.info(f"Successfully updated friend {friend.id} for user {friend.user_id}")
         except Exception as ex:
             self._logger.error(f"Error updating friend {friend.id} for user {friend.user_id}: {ex}")
@@ -199,7 +199,7 @@ class CosmosDbUserService:
     async def update_user_async(self, user: User):
         try:
             self._logger.info(f"Updating user {user.user_id}")
-            await self._user_container.upsert_item(user.to_dict())
+            await self._user_container.upsert_item(user.model_dump(by_alias=True))
             self._logger.info(f"Successfully updated user {user.user_id}")
         except Exception as ex:
             self._logger.error(f"Error updating user {user.user_id}: {ex}")
@@ -219,7 +219,7 @@ class CosmosDbUserService:
                 return
             
             record.last_match_id = last_match_id
-            await self._user_container.upsert_item(record.to_dict())
+            await self._user_container.upsert_item(record.model_dump(by_alias=True))
             self._logger.info(f"Successfully updated last match ID for user {account_id}, player {followed_player_id}")
             
         except Exception as ex:
@@ -240,7 +240,7 @@ class CosmosDbUserService:
                     user_id=account_id,
                     token=token
                 )
-                await self._telegram_verify_token_container.create_item(item.to_dict())
+                await self._telegram_verify_token_container.create_item(item.model_dump(by_alias=True))
                 self._logger.info(f"Successfully created Telegram verification token for user {account_id}")
                 return token
             except exceptions.CosmosResourceExistsError:

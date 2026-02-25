@@ -1,59 +1,40 @@
-from dataclasses import dataclass, field
+from pydantic import BaseModel, Field, ConfigDict
 
 STEAM_ID_OFFSET = 76561197960265728
+
 
 def steam_id_to_account_id(steam_id: int) -> int:
     return steam_id - STEAM_ID_OFFSET
 
+
 def account_id_to_steam_id(account_id: int) -> int:
     return account_id + STEAM_ID_OFFSET
 
-@dataclass
-class Friend:
+
+class Friend(BaseModel):
     """Represents a friend in the Dota 2 notification system."""
+    model_config = ConfigDict(extra='ignore', populate_by_name=True)
+
     id: str = ""
-    user_id: int = 0
+    user_id: int = Field(0, alias="userId")
     name: str = ""
-    last_match_id: int = 0
+    last_match_id: int = Field(0, alias="lastMatchId")
     following: bool = False
     type: str = "friend"
 
-    def to_dict(self) -> dict:
-        """Convert to dictionary for Cosmos DB serialization."""
-        return {
-            "id": self.id,
-            "userId": self.user_id,
-            "name": self.name,
-            "lastMatchId": self.last_match_id,
-            "following": self.following,
-            "type": self.type
-        }
 
-    @classmethod
-    def from_dict(cls, data: dict) -> "Friend":
-        """Create instance from dictionary (Cosmos DB deserialization)."""
-        return cls(
-            id=data.get("id", ""),
-            user_id=data.get("userId", 0),
-            name=data.get("name", ""),
-            last_match_id=data.get("lastMatchId", 0),
-            following=data.get("following", False),
-            type=data.get("type", "friend")
-        )
-
-
-
-@dataclass
-class User:
+class User(BaseModel):
     """Represents a user in the Dota 2 notification system."""
+    model_config = ConfigDict(extra='ignore', populate_by_name=True)
+
     id: str = ""
-    user_id: int = 0
+    user_id: int = Field(0, alias="userId")
     name: str = ""
-    telegram_chat_id: str = ""
-    telegram_username: str = ""
-    telegram_verify_token: str = ""
+    telegram_chat_id: str = Field("", alias="telegramChatId")
+    telegram_username: str = Field("", alias="telegramUsername")
+    telegram_verify_token: str = Field("", alias="telegramVerifyToken")
     following: bool = True
-    last_match_id: int = 0
+    last_match_id: int = Field(0, alias="lastMatchId")
     type: str = "user"
 
     @property
@@ -61,58 +42,12 @@ class User:
         """Check if the user has a verified Telegram chat ID."""
         return bool(self.telegram_chat_id and self.telegram_chat_id.strip())
 
-    def to_dict(self) -> dict:
-        """Convert to dictionary for Cosmos DB serialization."""
-        return {
-            "id": self.id,
-            "userId": self.user_id,
-            "name": self.name,
-            "telegramChatId": self.telegram_chat_id,
-            "telegramUsername": self.telegram_username,
-            "telegramVerifyToken": self.telegram_verify_token,
-            "type": self.type,
-            "following": self.following,
-            "lastMatchId": self.last_match_id
-        }
 
-    @classmethod
-    def from_dict(cls, data: dict) -> "User":
-        """Create instance from dictionary (Cosmos DB deserialization)."""
-        return cls(
-            id=data.get("id", ""),
-            user_id=data.get("userId", 0),
-            name=data.get("name", ""),
-            telegram_chat_id=data.get("telegramChatId", ""),
-            telegram_username=data.get("telegramUsername", ""),
-            telegram_verify_token=data.get("telegramVerifyToken", ""),
-            following=data.get("following", True),
-            type=data.get("type", "user"),
-            last_match_id=data.get("lastMatchId", 0)
-        )
-
-@dataclass
-class UserTelegramVerifyToken:
+class UserTelegramVerifyToken(BaseModel):
     """Represents a Telegram verification token for a user."""
+    model_config = ConfigDict(extra='ignore', populate_by_name=True)
+
     id: str = ""
-    user_id: int = 0
+    user_id: int = Field(0, alias="userId")
     token: str = ""
     type: str = "telegram_verify_token"
-
-    def to_dict(self) -> dict:
-        """Convert to dictionary for Cosmos DB serialization."""
-        return {
-            "id": self.id,
-            "userId": self.user_id,
-            "token": self.token,
-            "type": self.type
-        }
-
-    @classmethod
-    def from_dict(cls, data: dict) -> "UserTelegramVerifyToken":
-        """Create instance from dictionary (Cosmos DB deserialization)."""
-        return cls(
-            id=data.get("id", ""),
-            user_id=data.get("userId", 0),
-            token=data.get("token", ""),
-            type=data.get("type", "telegram_verify_token")
-        )

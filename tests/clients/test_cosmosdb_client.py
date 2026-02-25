@@ -10,7 +10,7 @@ async def test_get_user_async():
         "userId": 123,
         "name": "TestUser",
         "telegramChatId": "chat-456",
-        "following": [],
+        "following": False,
         "type": "user"
     }
 
@@ -35,7 +35,7 @@ async def test_get_user_async():
         assert user.user_id == 123
         assert user.name == "TestUser"
         assert user.telegram_chat_id == "chat-456"
-        assert user.following == []
+        assert user.following == False
         assert user.type == "user"
 
         mock_container.read_item.assert_awaited_once_with(item="123", partition_key=123)
@@ -48,7 +48,7 @@ async def test_get_all_users_async():
             "userId": 123,
             "name": "TestUser1",
             "telegramChatId": "chat-456",
-            "following": [],
+            "following": False,
             "type": "user"
         },
         {
@@ -56,7 +56,7 @@ async def test_get_all_users_async():
             "userId": 456,
             "name": "TestUser2",
             "telegramChatId": "chat-789",
-            "following": [],
+            "following": False,
             "type": "user"
         }
     ]
@@ -330,7 +330,7 @@ async def test_update_friend_async():
     )
 
     mock_container = AsyncMock()
-    mock_container.upsert_item.return_value = friend.to_dict()
+    mock_container.upsert_item.return_value = friend.model_dump(by_alias=True)
     
     mock_client_instance = MagicMock()
     mock_database = mock_client_instance.get_database_client.return_value
@@ -345,7 +345,7 @@ async def test_update_friend_async():
     ) as service:
         await service.update_friend_async(friend)
 
-        mock_container.upsert_item.assert_awaited_once_with(friend.to_dict())
+        mock_container.upsert_item.assert_awaited_once_with(friend.model_dump(by_alias=True))
 
 @pytest.mark.asyncio
 async def test_create_telegram_verify_token_async():
@@ -490,7 +490,7 @@ async def test_update_user_async_happy_path():
     ) as service:
         await service.update_user_async(user_to_update)
 
-        mock_user_container.upsert_item.assert_awaited_once_with(user_to_update.to_dict())
+        mock_user_container.upsert_item.assert_awaited_once_with(user_to_update.model_dump(by_alias=True))
 
 @pytest.mark.asyncio
 async def test_delete_telegram_verify_token_async_happy_path():

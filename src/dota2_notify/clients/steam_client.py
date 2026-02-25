@@ -29,7 +29,7 @@ class SteamClient:
         players_data = data.get("response", {}).get("players", [])
         return [SteamPlayerSummary.from_dict(player) for player in players_data]
     
-    async def get_friend_list(self, steam_id: str) -> dict:
+    async def get_friend_list(self, steam_id: str) -> list[str]:
         response = await self.client.get(
             f"{self.BASE_URL}ISteamUser/GetFriendList/v1/",
             params={"steamid": steam_id, "key": self.api_key, "relationship": "friend"}

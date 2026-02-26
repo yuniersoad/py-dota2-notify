@@ -46,7 +46,7 @@ class User(BaseModel):
 class UserTelegramVerifyToken(BaseModel):
     """Represents a Telegram verification token for a user."""
     model_config = ConfigDict(extra='ignore', populate_by_name=True)
-
+    # TODO: make the token temporary with a cosmos db TTL
     id: str = ""
     user_id: int = Field(0, alias="userId")
     token: str = ""

@@ -6,7 +6,6 @@ from fastapi import FastAPI, Request
 from dota2_notify.web import auth, health, friends, static, notifications
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from azure.cosmos.aio import CosmosClient
-from dotenv import load_dotenv
 import logging
 
 import httpx
@@ -23,8 +22,6 @@ logging.basicConfig(
 logging.getLogger("azure.cosmos").setLevel(logging.WARNING)
 logging.getLogger("azure.core").setLevel(logging.WARNING)
 logging.getLogger("httpx").setLevel(logging.WARNING)
-
-load_dotenv()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):

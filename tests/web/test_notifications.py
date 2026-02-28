@@ -144,6 +144,163 @@ async def test_get_notifications_unverified_user_regenerates_token(client_with_m
     assert new_token in response_text
 
 
+@pytest.mark.asyncio
+async def test_reset_telegram_connection_happy_path(client_with_mocks):
+    """Test that reset clears the chat id, generates a new token, updates the user and redirects."""
+    client, mock_user_service, _ = client_with_mocks
+
+    test_account_id = 52079950
+    new_token = "NEW_RESET_TOKEN_456"
+
+    existing_user = User.model_validate({
+        "user_id": test_account_id,
+        "id": str(test_account_id),
+        "name": "TestUser",
+        "telegram_chat_id": "987654321",
+        "telegram_verify_token": "OLD_TOKEN"
+    })
+
+    mock_user_service.get_user_async.return_value = existing_user
+    mock_user_service.create_telegram_verify_token_async.return_value = new_token
+
+    response = client.post("/notifications/reset", follow_redirects=False)
+
+    assert response.status_code == 303
+    assert response.headers["location"] == "/notifications"
+
+    assert existing_user.telegram_chat_id == ""
+    assert existing_user.telegram_verify_token == new_token
+
+    mock_user_service.create_telegram_verify_token_async.assert_called_once_with(test_account_id)
+    mock_user_service.update_user_async.assert_called_once_with(existing_user)
+
+
+@pytest.mark.asyncio
+async def test_is_telegram_connected_happy_path(client_with_mocks):
+    """Test that is_telegram_connected returns the correct connected status."""
+    client, mock_user_service, _ = client_with_mocks
+
+    test_account_id = 52079950
+
+    connected_user = User.model_validate({
+        "user_id": test_account_id,
+        "id": str(test_account_id),
+        "name": "TestUser",
+        "telegram_chat_id": "987654321",
+        "telegram_verify_token": ""
+    })
+
+    mock_user_service.get_user_async.return_value = connected_user
+
+    response = client.get("/notifications/is_telegram_connected")
+
+    assert response.status_code == 200
+    assert response.json() == {"connected": True}
+    mock_user_service.get_user_async.assert_called_once_with(test_account_id)
+
+
+def test_is_telegram_connected_unauthenticated_returns_401():
+    """Test that is_telegram_connected returns 401 when no user is logged in."""
+    app = FastAPI()
+    app.include_router(router)
+
+    async def mock_get_current_user():
+        return None
+
+    async def mock_get_user_service():
+        return MagicMock()
+
+    app.dependency_overrides[get_current_user] = mock_get_current_user
+    app.dependency_overrides[get_user_service] = mock_get_user_service
+
+    client = TestClient(app)
+    response = client.get("/notifications/is_telegram_connected")
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Unauthorized"
+
+
+def test_telegram_webhook_invalid_secret_returns_401():
+    """Test that the webhook returns 401 when the secret does not match the bot token."""
+    app = FastAPI()
+    app.include_router(router)
+
+    def get_test_settings():
+        return Settings(
+            TELEGRAM__BOTTOKEN="real_token",
+            COSMOSDB__ENDPOINTURI="fake",
+            COSMOSDB__PRIMARYKEY="fake",
+            COSMOSDB__DATABASENAME="fake",
+            COSMOSDB__CONTAINERNAME="fake",
+            COSMOSDB__TOKENCONTAINERNAME="fake",
+            MATCHCHECK__INTERVALMINUTES=1,
+            MATCHCHECK__ENABLED=False,
+            STEAM__APIKEY="fake",
+            JWT__COOKIES__SECRET="test_secret_key_for_testing"
+        )
+
+    async def mock_get_user_service():
+        return MagicMock()
+
+    app.dependency_overrides[get_settings] = get_test_settings
+    app.dependency_overrides[get_user_service] = mock_get_user_service
+
+    client = TestClient(app)
+    payload = {"update_id": 1}
+    response = client.post("/notifications/telegram-webhook/74ad1s_wrong_token", json=payload)
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Unauthorized"
+
+
+@pytest.mark.asyncio
+async def test_telegram_webhook_happy_path_updates_user(client_with_mocks):
+    """Test that a valid /start command connects the Telegram account to the user."""
+    client, mock_user_service, _ = client_with_mocks
+
+    test_account_id = 52079950
+    verify_token = "VALID_VERIFY_TOKEN"
+    chat_id = 111222333
+    username = "telegram_user"
+
+    user = User.model_validate({
+        "user_id": test_account_id,
+        "id": str(test_account_id),
+        "name": "TestUser",
+        "telegram_chat_id": "",
+        "telegram_verify_token": verify_token
+    })
+
+    mock_user_service.get_user_id_by_telegram_token_async.return_value = test_account_id
+    mock_user_service.get_user_async.return_value = user
+    mock_user_service.delete_telegram_verify_token_async = AsyncMock()
+
+    payload = {
+        "update_id": 42,
+        "message": {
+            "message_id": 1,
+            "chat": {"id": chat_id, "type": "private", "username": username},
+            "date": 1700000000,
+            "text": f"/start {verify_token}"
+        }
+    }
+
+    # The valid secret matches TELEGRAM__BOTTOKEN="fake" set in client_with_mocks
+    response = client.post("/notifications/telegram-webhook/74ad1s_fake", json=payload)
+
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok"}
+
+    assert user.telegram_chat_id == str(chat_id)
+    assert user.telegram_username == username
+    assert user.telegram_verify_token == ""
+
+    mock_user_service.get_user_id_by_telegram_token_async.assert_called_once_with(verify_token)
+    mock_user_service.get_user_async.assert_called_once_with(test_account_id)
+    mock_user_service.update_user_async.assert_called_once_with(user)
+    mock_user_service.delete_telegram_verify_token_async.assert_called_once_with(verify_token)
+
+
 def test_get_notifications_unauthenticated_redirects_to_home():
     """Test that get_notifications redirects to / when no user is logged in."""
     app = FastAPI()

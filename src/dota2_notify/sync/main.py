@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+import signal
 
 from azure.cosmos.aio import CosmosClient
 from dota2_notify.sync.config import get_settings
@@ -11,12 +12,21 @@ logger = logging.getLogger(__name__)
 logging.getLogger("azure.cosmos").setLevel(logging.WARNING)
 logging.getLogger("azure.core").setLevel(logging.WARNING)
 
+keep_running = True
+
+def handle_exit(sig, frame):
+    global keep_running
+    print("Shutdown signal received...")
+    keep_running = False
+
+signal.signal(signal.SIGINT, handle_exit)
+signal.signal(signal.SIGTERM, handle_exit)
 
 async def consume_change_feed(container, poll_interval: float = 5.0) -> None:
     """Poll the Cosmos DB change feed indefinitely and print each changed document."""
     continuation = None
 
-    while True:
+    while keep_running:
         feed_kwargs = (
             {"continuation": continuation}
             if continuation
@@ -57,7 +67,10 @@ async def main() -> None:
 
 
 def run() -> None:
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        logger.info("Shutting down...")
 
 
 if __name__ == "__main__":

@@ -34,6 +34,7 @@ pythonpath = ["src"]
 
 [project.scripts]
 app = "dota2_notify.app.main:main"
+data-sync = "dota2_notify.sync.main:run"
 
 [dependency-groups]
 dev = [

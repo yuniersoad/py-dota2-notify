@@ -17,7 +17,8 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=".env",
         env_nested_delimiter='___',
-        env_prefix='' 
+        env_prefix='',
+        extra="ignore",
     )
 
 @lru_cache

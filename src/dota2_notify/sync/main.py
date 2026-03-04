@@ -14,6 +14,8 @@ logging.getLogger("azure.cosmos").setLevel(logging.WARNING)
 logging.getLogger("azure.core").setLevel(logging.WARNING)
 
 REDIS_SENTINEL_KEY = "dota2_notify_sync_sentinel"
+METADATA_DOC_ID = "metadata"
+METADATA_PARTITION_KEY = 0
 keep_running = True
 
 def handle_exit(sig, frame):
@@ -25,21 +27,49 @@ signal.signal(signal.SIGINT, handle_exit)
 signal.signal(signal.SIGTERM, handle_exit)
 
 
+async def get_continuation_token(container):
+    try:
+        metadata_doc = await container.read_item(item=METADATA_DOC_ID, partition_key=METADATA_PARTITION_KEY)
+        return metadata_doc.get("continuation_token")
+    except Exception:
+        return None
+
+
+async def save_continuation_token(container, token):
+    metadata_doc = {
+        "id": METADATA_DOC_ID,
+        "userId": METADATA_PARTITION_KEY,
+        "continuation_token": token,
+    }
+    await container.upsert_item(body=metadata_doc)
+
+
+async def delete_continuation_token(container):
+    try:
+        await container.delete_item(item=METADATA_DOC_ID, partition_key=METADATA_PARTITION_KEY)
+    except Exception:
+        pass
+
+
 async def consume_change_feed(container, redis_client, poll_interval: float = 5.0) -> None:
     """Poll the Cosmos DB change feed indefinitely and print each changed document."""
-    continuation = None
+    continuation = await get_continuation_token(container)
     iterations = 0
     initial_run_completed = False
 
     while keep_running:
         iterations += 1
         if iterations % 10 == 0:
-            logger.info("Checking for Redis sentinel key...")
-            sentinel_exists = await redis_client.exists(REDIS_SENTINEL_KEY)
-            if not sentinel_exists:
-                logger.warning("Redis sentinel key not found. Restarting from the beginning.")
-                continuation = None
-                initial_run_completed = False
+            try:
+                logger.info("Checking for Redis sentinel key...")
+                sentinel_exists = await redis_client.exists(REDIS_SENTINEL_KEY)
+                if not sentinel_exists:
+                    logger.warning("Redis sentinel key not found. Restarting from the beginning.")
+                    continuation = None
+                    initial_run_completed = False
+                    await delete_continuation_token(container)
+            except redis.RedisError as e:
+                logger.error(f"Redis error when checking sentinel key: {e}")
 
         feed_kwargs = (
             {"continuation": continuation}
@@ -48,21 +78,34 @@ async def consume_change_feed(container, redis_client, poll_interval: float = 5.
         )
 
         has_changes = False
-        iterator = container.query_items_change_feed(**feed_kwargs)
-        async for doc in iterator:
-            has_changes = True
-            print(json.dumps(doc, indent=2))
-            if doc.get("following"):
-                await redis_client.sadd(doc["id"], doc["userId"])
-            else:
-                await redis_client.srem(doc["id"], doc["userId"])
+        try:
+            iterator = container.query_items_change_feed(**feed_kwargs)
+            async for doc in iterator:
+                has_changes = True
+                if doc["id"] == METADATA_DOC_ID:  # Skip metadata document to avoid infinite loop
+                    continue
+                print(json.dumps(doc, indent=2))
+                if doc.get("following"):
+                    await redis_client.sadd(doc["id"], doc["userId"])
+                else:
+                    await redis_client.srem(doc["id"], doc["userId"])
+        except redis.RedisError as e:
+            logger.error(f"Redis error during change feed processing: {e}. Retrying batch.")
+            await asyncio.sleep(poll_interval)
+            continue
         
         if not continuation and not initial_run_completed:
-            logger.info("Initial run completed. Setting Redis sentinel key.")
-            await redis_client.set(REDIS_SENTINEL_KEY, "1")
-            initial_run_completed = True
+            try:
+                logger.info("Initial run completed. Setting Redis sentinel key.")
+                await redis_client.set(REDIS_SENTINEL_KEY, "1")
+                initial_run_completed = True
+            except redis.RedisError as e:
+                logger.error(f"Redis error when setting sentinel key: {e}")
 
-        continuation = container.client_connection.last_response_headers['etag']
+        new_continuation = container.client_connection.last_response_headers['etag']
+        if new_continuation and new_continuation != continuation:
+            continuation = new_continuation
+            await save_continuation_token(container, continuation)
 
         logger.debug("Checked for changes. Continuation token: %s", continuation)
 

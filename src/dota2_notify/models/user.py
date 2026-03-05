@@ -46,8 +46,10 @@ class User(BaseModel):
 class UserTelegramVerifyToken(BaseModel):
     """Represents a Telegram verification token for a user."""
     model_config = ConfigDict(extra='ignore', populate_by_name=True)
-    # TODO: make the token temporary with a cosmos db TTL
     id: str = ""
     user_id: int = Field(0, alias="userId")
     token: str = ""
     type: str = "telegram_verify_token"
+    # To enable TTL in Cosmos DB, you need to enable it on the container.
+    # The `_ttl` property will be used by Cosmos DB to automatically delete the document.
+    ttl: int = Field(7*24*60*60, alias="ttl")  # 1 week in seconds

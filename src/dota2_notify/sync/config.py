@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     cosmosdb_primary_key: str = Field(..., alias="COSMOSDB__PRIMARYKEY")
     cosmosdb_database_name: str = Field(..., alias="COSMOSDB__DATABASENAME")
     cosmosdb_container_name: str = Field(..., alias="COSMOSDB__CONTAINERNAME")
+    cosmosdb_metadata_container_name: str = Field(..., alias="COSMOSDB__METADATACONTAINERNAME")
     redis_host: str = Field(..., alias="REDIS__HOST")
     redis_port: int = Field(..., alias="REDIS__PORT")
 

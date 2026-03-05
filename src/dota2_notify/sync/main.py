@@ -14,9 +14,9 @@ logging.getLogger("azure.cosmos").setLevel(logging.WARNING)
 logging.getLogger("azure.core").setLevel(logging.WARNING)
 
 REDIS_SENTINEL_KEY = "dota2_notify_sync_sentinel"
-METADATA_DOC_ID = "metadata"
-METADATA_PARTITION_KEY = 0
+FEED_CONTINUATION_TOKEN_DOC_ID = "feed_continuation_token"
 keep_running = True
+
 
 def handle_exit(sig, frame):
     global keep_running
@@ -27,33 +27,38 @@ signal.signal(signal.SIGINT, handle_exit)
 signal.signal(signal.SIGTERM, handle_exit)
 
 
-async def get_continuation_token(container):
+async def get_continuation_token(metadata_container):
     try:
-        metadata_doc = await container.read_item(item=METADATA_DOC_ID, partition_key=METADATA_PARTITION_KEY)
+        metadata_doc = await metadata_container.read_item(
+            item=FEED_CONTINUATION_TOKEN_DOC_ID, partition_key=FEED_CONTINUATION_TOKEN_DOC_ID
+        )
         return metadata_doc.get("continuation_token")
     except Exception:
         return None
 
 
-async def save_continuation_token(container, token):
+async def save_continuation_token(metadata_container, token):
     metadata_doc = {
-        "id": METADATA_DOC_ID,
-        "userId": METADATA_PARTITION_KEY,
+        "id": FEED_CONTINUATION_TOKEN_DOC_ID,
         "continuation_token": token,
     }
-    await container.upsert_item(body=metadata_doc)
+    await metadata_container.upsert_item(body=metadata_doc)
 
 
-async def delete_continuation_token(container):
+async def delete_continuation_token(metadata_container):
     try:
-        await container.delete_item(item=METADATA_DOC_ID, partition_key=METADATA_PARTITION_KEY)
+        await metadata_container.delete_item(
+            item=FEED_CONTINUATION_TOKEN_DOC_ID, partition_key=FEED_CONTINUATION_TOKEN_DOC_ID
+        )
     except Exception:
         pass
 
 
-async def consume_change_feed(container, redis_client, poll_interval: float = 5.0) -> None:
+async def consume_change_feed(
+    container, metadata_container, redis_client, poll_interval: float = 5.0
+) -> None:
     """Poll the Cosmos DB change feed indefinitely and print each changed document."""
-    continuation = await get_continuation_token(container)
+    continuation = await get_continuation_token(metadata_container)
     iterations = 0
     initial_run_completed = False
 
@@ -67,23 +72,17 @@ async def consume_change_feed(container, redis_client, poll_interval: float = 5.
                     logger.warning("Redis sentinel key not found. Restarting from the beginning.")
                     continuation = None
                     initial_run_completed = False
-                    await delete_continuation_token(container)
+                    await delete_continuation_token(metadata_container)
             except redis.RedisError as e:
                 logger.error(f"Redis error when checking sentinel key: {e}")
 
         feed_kwargs = (
-            {"continuation": continuation}
-            if continuation
-            else {"start_time": "Beginning"}
+            {"continuation": continuation} if continuation else {"start_time": "Beginning"}
         )
 
-        has_changes = False
         try:
             iterator = container.query_items_change_feed(**feed_kwargs)
             async for doc in iterator:
-                has_changes = True
-                if doc["id"] == METADATA_DOC_ID:  # Skip metadata document to avoid infinite loop
-                    continue
                 print(json.dumps(doc, indent=2))
                 if doc.get("following"):
                     await redis_client.sadd(doc["id"], doc["userId"])
@@ -93,7 +92,7 @@ async def consume_change_feed(container, redis_client, poll_interval: float = 5.
             logger.error(f"Redis error during change feed processing: {e}. Retrying batch.")
             await asyncio.sleep(poll_interval)
             continue
-        
+
         if not continuation and not initial_run_completed:
             try:
                 logger.info("Initial run completed. Setting Redis sentinel key.")
@@ -102,16 +101,15 @@ async def consume_change_feed(container, redis_client, poll_interval: float = 5.
             except redis.RedisError as e:
                 logger.error(f"Redis error when setting sentinel key: {e}")
 
-        new_continuation = container.client_connection.last_response_headers['etag']
+        new_continuation = container.client_connection.last_response_headers.get("etag")
         if new_continuation and new_continuation != continuation:
             continuation = new_continuation
-            await save_continuation_token(container, continuation)
+            await save_continuation_token(metadata_container, continuation)
 
         logger.debug("Checked for changes. Continuation token: %s", continuation)
 
-        if not has_changes:
-            logger.debug("No changes. Waiting %ss before next poll.", poll_interval)
-            await asyncio.sleep(poll_interval)
+        logger.debug("Waiting %ss before next poll.", poll_interval)
+        await asyncio.sleep(poll_interval)
 
 
 async def main() -> None:
@@ -125,15 +123,15 @@ async def main() -> None:
         url=settings.cosmosdb_endpoint_uri,
         credential=settings.cosmosdb_primary_key,
     ) as client:
-        container = client.get_database_client(settings.cosmosdb_database_name).get_container_client(
-            settings.cosmosdb_container_name
-        )
+        database = client.get_database_client(settings.cosmosdb_database_name)
+        container = database.get_container_client(settings.cosmosdb_container_name)
+        metadata_container = database.get_container_client(settings.cosmosdb_metadata_container_name)
         logger.info(
             "Listening to change feed on %s/%s",
             settings.cosmosdb_database_name,
             settings.cosmosdb_container_name,
         )
-        await consume_change_feed(container, redis_client)
+        await consume_change_feed(container, metadata_container, redis_client)
 
     logger.info("Shutting down Redis client...")
     await redis_client.close()

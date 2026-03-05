@@ -51,6 +51,9 @@ async def get_friends(
             else:
                 not_following.append(summary)
     
+    following.sort(key=lambda x: x.personaname)
+    not_following.sort(key=lambda x: x.personaname)
+
     flash_message = getattr(request.state, "flash_message", None)
 
     return template_obj.TemplateResponse(

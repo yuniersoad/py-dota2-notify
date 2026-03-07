@@ -1,6 +1,6 @@
 import pytest
 from datetime import datetime, timezone, timedelta
-from dota2_notify.models.match import DotaMatch
+from dota2_notify.models.opendota_match import DotaMatch
 
 def test_parse_match_from_json():
     """Test parsing a match from JSON string and inspecting its properties"""

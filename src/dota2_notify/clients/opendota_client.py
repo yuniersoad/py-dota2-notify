@@ -1,5 +1,5 @@
 import httpx
-from dota2_notify.models.match import DotaMatch
+from dota2_notify.models.opendota_match import DotaMatch
 
 class OpenDotaClient:
     BASE_URL = "https://api.opendota.com/api/"

@@ -1,6 +1,7 @@
 from urllib import response
 import httpx
 
+from ..models.match import MatchHistoryResponse
 from ..models.steam_player_summary import SteamPlayerSummary 
 
 class SteamClient:
@@ -50,3 +51,16 @@ class SteamClient:
         data = response.json()
         is_public = data.get("result", {}).get("status") != 15
         return data, is_public
+    
+    async def get_match_history_by_sequence_num(self, start_at_match_seq_num: int, matches_requested: int = 100) -> MatchHistoryResponse:
+        params = {
+            "start_at_match_seq_num": start_at_match_seq_num,
+            "matches_requested": matches_requested,
+            "key": self.api_key
+        }
+        response = await self.client.get(
+            f"{self.BASE_URL}IDOTA2Match_570/GetMatchHistoryBySequenceNum/v1/",
+            params=params
+        )
+        response.raise_for_status()
+        return MatchHistoryResponse.model_validate_json(response.content)

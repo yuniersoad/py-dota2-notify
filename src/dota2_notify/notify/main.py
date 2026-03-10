@@ -172,14 +172,20 @@ async def consume_match_feed(steam_client: SteamClient, redis_client: redis.Redi
             if e.response.status_code == 429 or e.response.status_code == 503:
                 logger.warning("Rate limit hit. Waiting for 60 seconds.")
                 await asyncio.sleep(60)
+                continue
             else:
                 logger.error(f"HTTP error while fetching matches: {e}")
         except Exception as e:
             logger.error(f"An unexpected error occurred: {e}")
 
         sleep_time = poll_interval
-        if len(matches) < batch_size:
+        # we are up to date, can wait longer before next poll
+        if len(matches) < (batch_size * 0.9): 
             sleep_time = 2*poll_interval
+        # we are not likely up to date, but valve removes some "private" matches, so we got less matches than requested
+        # adding some time for randomization
+        elif len(matches) < batch_size and len(matches) >= (batch_size * 0.9): 
+            sleep_time = poll_interval + 1.0
         
         logger.info("Waiting %ss before next poll.", sleep_time) 
         await asyncio.sleep(sleep_time)

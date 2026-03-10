@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import signal
+import time
 import httpx
 import redis.asyncio as redis
 
@@ -127,8 +128,12 @@ async def save_match_sequence_num(metadata_container, seq_num):
 
 async def consume_match_feed(steam_client: SteamClient, redis_client: redis.Redis, db_client: CosmosDbUserService, telegram_client: TelegramClient, metadata_container, poll_interval: float = 5.0):
     """Poll the Steam API for new matches indefinitely."""
-    start_at_match_seq_num = await get_match_sequence_num(metadata_container) or 7327238912
+    start_at_match_seq_num = await get_match_sequence_num(metadata_container)
+    batch_size = 100
     iterations = 0
+
+    if start_at_match_seq_num is None:
+        return
 
     while keep_running:
         try:
@@ -136,38 +141,48 @@ async def consume_match_feed(steam_client: SteamClient, redis_client: redis.Redi
             logger.info(f"Fetching matches starting from sequence number {start_at_match_seq_num}")
             match_history = await steam_client.get_match_history_by_sequence_num(
                 start_at_match_seq_num=start_at_match_seq_num,
-                matches_requested=100
+                matches_requested=batch_size
             )
 
             matches = match_history.result.matches
             if matches:
+                first_seq_num, first_match_id = matches[0].match_seq_num, matches[0].match_id
+                last_seq_num, last_match_id = matches[-1].match_seq_num, matches[-1].match_id
+
                 for match in matches:
-                    logger.info(f"Processing match: {match.match_id}, sequence: {match.match_seq_num}")
                     await process_match(match, redis_client, db_client, telegram_client)
 
-                if matches:
-                    start_at_match_seq_num = matches[-1].match_seq_num + 1
-                    if iterations % 5 == 0:
-                        logger.info(f"Saving next sequence number to DB: {start_at_match_seq_num}")
-                        await save_match_sequence_num(metadata_container, start_at_match_seq_num)
-                else:
-                    await asyncio.sleep(2*poll_interval)
+                last_match = matches[-1]
+                last_match_end_time = last_match.start_time + last_match.duration
+                current_time = int(time.time())
+                lag_seconds = current_time - last_match_end_time
+                lag_minutes, lag_secs = divmod(lag_seconds, 60)
 
-            logger.info(f"Next sequence number: {start_at_match_seq_num}")
+                logger.info(f"Processed batch of {len(matches)} matches. Sequence: {first_seq_num} ({first_match_id}) to {last_seq_num} ({last_match_id}). Lag: {lag_minutes}m {lag_secs}s.")
+
+                start_at_match_seq_num = last_seq_num + 1
+                if iterations % 5 == 0:
+                    logger.info(f"Saving next sequence number to DB: {start_at_match_seq_num}")
+                    await save_match_sequence_num(metadata_container, start_at_match_seq_num)
+            else:
+                logger.info("No new matches found.")
+                await asyncio.sleep(2*poll_interval)
 
         except httpx.HTTPStatusError as e:
-            if e.response.status_code == 429:
+            if e.response.status_code == 429 or e.response.status_code == 503:
                 logger.warning("Rate limit hit. Waiting for 60 seconds.")
                 await asyncio.sleep(60)
             else:
                 logger.error(f"HTTP error while fetching matches: {e}")
-                await asyncio.sleep(poll_interval)
         except Exception as e:
             logger.error(f"An unexpected error occurred: {e}")
-            await asyncio.sleep(poll_interval)
 
-        logger.debug("Waiting %ss before next poll.", poll_interval)
-        await asyncio.sleep(poll_interval)
+        sleep_time = poll_interval
+        if len(matches) < batch_size:
+            sleep_time = 2*poll_interval
+        
+        logger.info("Waiting %ss before next poll.", sleep_time) 
+        await asyncio.sleep(sleep_time)
 
 
 async def main() -> None:

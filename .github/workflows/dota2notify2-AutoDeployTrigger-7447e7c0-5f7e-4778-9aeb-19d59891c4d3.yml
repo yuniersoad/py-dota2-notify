@@ -35,15 +35,12 @@ jobs:
         uses: azure/container-apps-deploy-action@v2
         with:
           appSourcePath: ${{ github.workspace }}
-          _dockerfilePathKey_: _dockerfilePath_
-          _targetLabelKey_: _targetLabel_
+          dockerfilePath: Dockerfile
           registryUrl: dota2notify2.azurecr.io
           registryUsername: ${{ secrets.DOTA2NOTIFY2_REGISTRY_USERNAME }}
           registryPassword: ${{ secrets.DOTA2NOTIFY2_REGISTRY_PASSWORD }}
           containerAppName: dota2notify2
           resourceGroup: dota2notify
           imageToBuild: dota2notify2.azurecr.io/dota2notify2:${{ github.sha }}
-          _buildArgumentsKey_: |
-            _buildArgumentsValues_
 
 

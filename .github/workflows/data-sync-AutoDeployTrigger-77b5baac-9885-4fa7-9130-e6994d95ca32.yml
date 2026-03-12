@@ -35,7 +35,7 @@ jobs:
         uses: azure/container-apps-deploy-action@v2
         with:
           appSourcePath: ${{ github.workspace }}
-          _dockerfilePathKey_: Dockerfile.sync
+          dockerfilePath: Dockerfile.sync
           registryUrl: dota2notify2.azurecr.io
           registryUsername: ${{ secrets.DATASYNC_REGISTRY_USERNAME }}
           registryPassword: ${{ secrets.DATASYNC_REGISTRY_PASSWORD }}

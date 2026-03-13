@@ -65,7 +65,7 @@ async def send_notification(user_id: int, account_id: int, match: Match, db_clie
         match_duration = f"{minutes}m {seconds}s"
 
     dotabuff_link = f"https://www.dotabuff.com/matches/{match.match_id}"
-    message = (f"{followed_player_name} {outcome} a match as {hero_name} "
+    message = (f"{followed_player_name} {outcome} a {match.lobby_type_name}/{match.game_mode_name} match as {hero_name} "
                f"with KDA {player_in_match.kills}/{player_in_match.deaths}/{player_in_match.assists}. "
                f"Match duration: {match_duration}. "
                f"Match details: {dotabuff_link}")

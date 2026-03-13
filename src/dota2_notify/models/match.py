@@ -47,6 +47,23 @@ HERO_NAMES = {
         138: "Muerta", 145: "Kez", 155: "Largo",
     }
 
+GAME_MODES = {
+    0: 'Unknown', 1: 'All Pick', 2: 'Captains Mode', 3: 'Random Draft',
+    4: 'Single Draft', 5: 'All Random', 6: 'Intro', 7: 'Diretide',
+    8: 'Reverse Captains Mode', 9: 'Greeviling', 10: 'Tutorial',
+    11: 'Mid Only', 12: 'Least Played', 13: 'Limited Heroes',
+    14: 'Compendium Matchmaking', 15: 'Custom', 16: 'Captains Draft',
+    17: 'Balanced Draft', 18: 'Ability Draft', 19: 'Event',
+    20: 'All Random Deathmatch', 21: '1v1 Mid', 22: 'All Draft',
+    23: 'Turbo', 24: 'Mutation'
+}
+
+LOBBY_TYPES = {
+    -1: 'Invalid', 0: 'Public matchmaking', 1: 'Practice', 2: 'Tournament',
+    3: 'Tutorial', 4: 'Co-op with bots', 5: 'Team match', 6: 'Solo Queue',
+    7: 'Ranked', 8: 'Solo Mid 1v1'
+}
+
 class Player(BaseModel):
     model_config = ConfigDict(extra="ignore")
     
@@ -88,6 +105,14 @@ class Match(BaseModel):
     dire_score: int
 
     model_config = ConfigDict(extra="ignore")
+
+    @property
+    def game_mode_name(self) -> str:
+        return GAME_MODES.get(self.game_mode, f"Unknown Game Mode (ID: {self.game_mode})")
+
+    @property
+    def lobby_type_name(self) -> str:
+        return LOBBY_TYPES.get(self.lobby_type, f"Unknown Lobby Type (ID: {self.lobby_type})")
 
 
 class MatchHistoryResult(BaseModel):

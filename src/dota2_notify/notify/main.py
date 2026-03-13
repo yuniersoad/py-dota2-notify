@@ -126,7 +126,7 @@ async def save_match_sequence_num(metadata_container, seq_num):
     await metadata_container.upsert_item(body=metadata_doc)
 
 
-async def consume_match_feed(steam_client: SteamClient, redis_client: redis.Redis, db_client: CosmosDbUserService, telegram_client: TelegramClient, metadata_container, poll_interval: float = 5.0):
+async def consume_match_feed(steam_client: SteamClient, redis_client: redis.Redis, db_client: CosmosDbUserService, telegram_client: TelegramClient, metadata_container, poll_interval: float, rate_limit_backoff_time: float):
     """Poll the Steam API for new matches indefinitely."""
     start_at_match_seq_num = await get_match_sequence_num(metadata_container)
     batch_size = 100
@@ -170,8 +170,8 @@ async def consume_match_feed(steam_client: SteamClient, redis_client: redis.Redi
 
         except httpx.HTTPStatusError as e:
             if e.response.status_code == 429 or e.response.status_code == 503:
-                logger.warning("Rate limit hit. Waiting for 60 seconds.")
-                await asyncio.sleep(60)
+                logger.warning(f"Rate limit hit. Waiting for {rate_limit_backoff_time} seconds.")
+                await asyncio.sleep(rate_limit_backoff_time)
                 continue
             else:
                 logger.error(f"HTTP error while fetching matches: {e}")
@@ -215,7 +215,15 @@ async def main() -> None:
         metadata_container = database.get_container_client(settings.cosmosdb_metadata_container_name)
         
         logger.info("Starting match feed consumer...")
-        await consume_match_feed(steam_client, redis_client, db_client, telegram_client, metadata_container)
+        await consume_match_feed(
+            steam_client, 
+            redis_client, 
+            db_client, 
+            telegram_client, 
+            metadata_container,
+            poll_interval=settings.poll_interval, 
+            rate_limit_backoff_time=settings.rate_limit_backoff_time
+        )
 
     logger.info("Shutting down Redis client...")
     await redis_client.close()

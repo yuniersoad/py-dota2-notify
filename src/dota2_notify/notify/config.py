@@ -19,6 +19,9 @@ class Settings(BaseSettings):
     redis_host: str = Field(..., alias="REDIS__HOST")
     redis_port: int = Field(..., alias="REDIS__PORT")
 
+    poll_interval: float = Field(5.0, alias="POLL__INTERVAL")
+    rate_limit_backoff_time: float = Field(60.0, alias="RATELIMIT__BACKOFFTIME")
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_nested_delimiter="___",

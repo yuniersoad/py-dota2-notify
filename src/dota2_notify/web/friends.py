@@ -50,6 +50,13 @@ async def get_friends(
                 following.append(summary)
             else:
                 not_following.append(summary)
+
+        # Include the current user in the list so they can follow/unfollow themselves
+        if user is not None and current_user_summary is not None:
+            if user.following:
+                following.append(current_user_summary)
+            else:
+                not_following.append(current_user_summary)
     
     following.sort(key=lambda x: x.personaname)
     not_following.sort(key=lambda x: x.personaname)
@@ -78,7 +85,13 @@ async def follow_friend(
     
     if steam_id is None:
         return RedirectResponse(url="/", status_code=http_status.HTTP_303_SEE_OTHER)
-    
+
+    if friend_steam_id == int(steam_id):
+        user = await user_service.get_user_with_steam_id_async(int(steam_id))
+        if user is not None:
+            user.following = True
+            await user_service.update_user_async(user)
+        return RedirectResponse(url="/", status_code=http_status.HTTP_303_SEE_OTHER)
 
     friend = await user_service.get_friend_by_steam_id_async(int(steam_id), friend_steam_id)
     if friend is None:
@@ -118,7 +131,14 @@ async def unfollow_friend(
     
     if steam_id is None:
         return RedirectResponse(url="/", status_code=http_status.HTTP_303_SEE_OTHER)
-    
+
+    if friend_steam_id == int(steam_id):
+        user = await user_service.get_user_with_steam_id_async(int(steam_id))
+        if user is not None:
+            user.following = False
+            await user_service.update_user_async(user)
+        return RedirectResponse(url="/", status_code=http_status.HTTP_303_SEE_OTHER)
+
     friend = await user_service.get_friend_by_steam_id_async(int(steam_id), friend_steam_id)
     if friend is None:
         return RedirectResponse(url="/", status_code=http_status.HTTP_303_SEE_OTHER)

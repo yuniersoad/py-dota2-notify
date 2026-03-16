@@ -4,7 +4,7 @@ from fastapi.testclient import TestClient
 from dota2_notify.web import friends
 from unittest.mock import AsyncMock, MagicMock
 from dota2_notify.models.steam_player_summary import SteamPlayerSummary
-from dota2_notify.models.user import Friend, steam_id_to_account_id
+from dota2_notify.models.user import Friend, User, steam_id_to_account_id
 from dota2_notify.web.dependencies import get_user_service, get_steam_client
 
 
@@ -23,7 +23,12 @@ def test_get_friends_with_authenticated_user():
     # Mock user_service
     mock_user_service = MagicMock()
     mock_user_service.get_user_with_steam_id_async = AsyncMock(
-        return_value={"steam_id": int(test_steam_id), "name": "TestUser"}
+        return_value=User(
+            id=str(steam_id_to_account_id(int(test_steam_id))),
+            user_id=steam_id_to_account_id(int(test_steam_id)),
+            name="TestUser",
+            following=True
+        )
     )
     
     async def mock_get_user_service():
@@ -224,3 +229,84 @@ def test_unfollow_friend_happy_path():
     
     assert updated_friend.id == str(friend_account_id)
     assert updated_friend.following is False
+
+
+def test_follow_self():
+    """Test that a user can follow themselves"""
+    app = FastAPI()
+    app.include_router(friends.router)
+
+    test_steam_id = "76561198012345678"
+    test_account_id = steam_id_to_account_id(int(test_steam_id))
+
+    async def mock_get_current_user():
+        return test_steam_id
+
+    mock_user_service = MagicMock()
+    existing_user = User(
+        id=str(test_account_id),
+        user_id=test_account_id,
+        name="TestUser",
+        following=False
+    )
+    mock_user_service.get_user_with_steam_id_async = AsyncMock(return_value=existing_user)
+    mock_user_service.update_user_async = AsyncMock()
+
+    async def mock_get_user_service():
+        return mock_user_service
+
+    app.dependency_overrides[friends.get_current_user] = mock_get_current_user
+    app.dependency_overrides[get_user_service] = mock_get_user_service
+    app.dependency_overrides[get_steam_client] = lambda: MagicMock()
+
+    client = TestClient(app)
+
+    response = client.post(f"/follow/{test_steam_id}", follow_redirects=False)
+
+    assert response.status_code == 303
+    assert response.headers["location"] == "/"
+
+    mock_user_service.update_user_async.assert_awaited_once()
+    updated_user = mock_user_service.update_user_async.call_args[0][0]
+    assert updated_user.user_id == test_account_id
+    assert updated_user.following is True
+
+
+def test_unfollow_self():
+    """Test that a user can unfollow themselves"""
+    app = FastAPI()
+    app.include_router(friends.router)
+
+    test_steam_id = "76561198012345678"
+    test_account_id = steam_id_to_account_id(int(test_steam_id))
+
+    async def mock_get_current_user():
+        return test_steam_id
+
+    mock_user_service = MagicMock()
+    existing_user = User(
+        id=str(test_account_id),
+        user_id=test_account_id,
+        name="TestUser",
+        following=True
+    )
+    mock_user_service.get_user_with_steam_id_async = AsyncMock(return_value=existing_user)
+    mock_user_service.update_user_async = AsyncMock()
+
+    async def mock_get_user_service():
+        return mock_user_service
+
+    app.dependency_overrides[friends.get_current_user] = mock_get_current_user
+    app.dependency_overrides[get_user_service] = mock_get_user_service
+
+    client = TestClient(app)
+
+    response = client.post(f"/unfollow/{test_steam_id}", follow_redirects=False)
+
+    assert response.status_code == 303
+    assert response.headers["location"] == "/"
+
+    mock_user_service.update_user_async.assert_awaited_once()
+    updated_user = mock_user_service.update_user_async.call_args[0][0]
+    assert updated_user.user_id == test_account_id
+    assert updated_user.following is False

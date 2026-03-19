@@ -126,7 +126,7 @@ async def save_match_sequence_num(metadata_container, seq_num):
     await metadata_container.upsert_item(body=metadata_doc)
 
 
-async def consume_match_feed(steam_client: SteamClient, redis_client: redis.Redis, db_client: CosmosDbUserService, telegram_client: TelegramClient, metadata_container, poll_interval: float, rate_limit_backoff_time: float):
+async def consume_match_feed(steam_client: SteamClient, redis_client: redis.Redis, db_client: CosmosDbUserService, telegram_client: TelegramClient, metadata_container, poll_interval: float, rate_limit_backoff_time: float, redact=None):
     """Poll the Steam API for new matches indefinitely."""
     start_at_match_seq_num = await get_match_sequence_num(metadata_container)
     batch_size = 100
@@ -168,7 +168,8 @@ async def consume_match_feed(steam_client: SteamClient, redis_client: redis.Redi
                     await save_match_sequence_num(metadata_container, start_at_match_seq_num)
             else:
                 logger.info("No new matches found.")
-                await asyncio.sleep(2*poll_interval)
+                if keep_running: 
+                    await asyncio.sleep(2*poll_interval)
 
         except httpx.HTTPStatusError as e:
             if e.response.status_code == 429 or e.response.status_code == 503:
@@ -176,9 +177,11 @@ async def consume_match_feed(steam_client: SteamClient, redis_client: redis.Redi
                 await asyncio.sleep(rate_limit_backoff_time)
                 continue
             else:
-                logger.error(f"HTTP error while fetching matches: {e}")
+                safe_msg = redact(str(e)) if redact else str(e)
+                logger.error(f"HTTP error while fetching matches: {safe_msg}")
         except Exception as e:
-            logger.error(f"An unexpected error occurred: {e}")
+            safe_msg = redact(str(e)) if redact else str(e)
+            logger.error(f"An unexpected error occurred: {safe_msg}")
 
         sleep_time = poll_interval
         # we are up to date, can wait longer before next poll
@@ -189,8 +192,9 @@ async def consume_match_feed(steam_client: SteamClient, redis_client: redis.Redi
         elif len(matches) < batch_size and len(matches) >= (batch_size * 0.9): 
             sleep_time = poll_interval + 1.0
         
-        logger.info("Waiting %ss before next poll.", sleep_time) 
-        await asyncio.sleep(sleep_time)
+        if keep_running:
+            logger.info("Waiting %ss before next poll.", sleep_time) 
+            await asyncio.sleep(sleep_time)
 
 
 async def main() -> None:
@@ -203,14 +207,18 @@ async def main() -> None:
     logger.info("Connecting to Redis: %s:%s", settings.redis_host, settings.redis_port)
     redis_client = redis.Redis(host=settings.redis_host, port=settings.redis_port, db=0)
 
-    async def log_request(request):
-        url = str(request.url)
-        url = url.replace(settings.telegram_bot_token, '[REDACTED]')
-        url = url.replace(settings.steam_api_key, '[REDACTED]')
-        logging.info(f"HTTP Request: {request.method} {url}")
-    async def log_response(response):
-        logging.info(f"HTTP Response: {response.status_code}")
+    def redact(text: str) -> str:
+        text = text.replace(settings.telegram_bot_token, '[REDACTED]')
+        text = text.replace(settings.steam_api_key, '[REDACTED]')
+        return text
     
+    async def log_request(request):
+        url = redact(str(request.url))
+        logging.info(f"HTTP Request: {request.method} {url}")
+    
+    async def log_response(response):
+        logging.info(f"HTTP Response: {response.status_code}")    
+
     async with httpx.AsyncClient(event_hooks={'request': [log_request], 'response': [log_response]}) as http_client, CosmosClient(
         url=settings.cosmosdb_endpoint_uri,
         credential=settings.cosmosdb_primary_key,
@@ -236,7 +244,8 @@ async def main() -> None:
             telegram_client, 
             metadata_container,
             poll_interval=settings.poll_interval, 
-            rate_limit_backoff_time=settings.rate_limit_backoff_time
+            rate_limit_backoff_time=settings.rate_limit_backoff_time,
+            redact=redact
         )
 
     logger.info("Shutting down Redis client...")

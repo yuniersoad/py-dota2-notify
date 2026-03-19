@@ -150,6 +150,8 @@ async def consume_match_feed(steam_client: SteamClient, redis_client: redis.Redi
                 last_seq_num, last_match_id = matches[-1].match_seq_num, matches[-1].match_id
 
                 for match in matches:
+                    if not keep_running:
+                        break
                     await process_match(match, redis_client, db_client, telegram_client)
 
                 last_match = matches[-1]
@@ -192,12 +194,24 @@ async def consume_match_feed(steam_client: SteamClient, redis_client: redis.Redi
 
 
 async def main() -> None:
+    logging.getLogger("azure.cosmos").setLevel(logging.WARNING)
+    logging.getLogger("azure.core").setLevel(logging.WARNING)
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+
     settings = get_settings()
 
     logger.info("Connecting to Redis: %s:%s", settings.redis_host, settings.redis_port)
     redis_client = redis.Redis(host=settings.redis_host, port=settings.redis_port, db=0)
 
-    async with httpx.AsyncClient() as http_client, CosmosClient(
+    async def log_request(request):
+        url = str(request.url)
+        url = url.replace(settings.telegram_bot_token, '[REDACTED]')
+        url = url.replace(settings.steam_api_key, '[REDACTED]')
+        logging.info(f"HTTP Request: {request.method} {url}")
+    async def log_response(response):
+        logging.info(f"HTTP Response: {response.status_code}")
+    
+    async with httpx.AsyncClient(event_hooks={'request': [log_request], 'response': [log_response]}) as http_client, CosmosClient(
         url=settings.cosmosdb_endpoint_uri,
         credential=settings.cosmosdb_primary_key,
     ) as cosmos_client:

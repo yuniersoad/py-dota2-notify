@@ -6,29 +6,39 @@
     <h2>Telegram Notifications</h2>
 
     {% if verified %}
-        <div class="info-box">
-            <p>Your Telegram account is verified and connected.</p>
+        <div class="info-box" style="border-left-color: #28a745;">
+            <h4>✅ Your account is verified!</h4>
             {% if user.telegram_username %}
             <p>Connected as: <strong>@{{ user.telegram_username }}</strong></p>
             {% endif %}
             <p>You will receive notifications for your tracked friends' matches.</p>
-            <form action="/notifications/reset" method="post">
-                <button type="submit" class="button">Reset Connection</button>
+            <form action="/notifications/reset" method="post" style="margin-top: 1rem;">
+                <button type="submit" class="button unfollow">Reset Connection</button>
             </form>
         </div>
     {% else %}
         <div class="info-box">
-            <p>Your Telegram account is not connected. To receive notifications, please follow one of the options below.</p>
+            <p>Your Telegram account is not connected. To receive notifications, please follow the steps below.</p>
         </div>
 
-        <h3>Option 1: Direct Link</h3>
-        <p>Click the link below to open a chat with the Dota2Notify bot on Telegram and automatically send your verification token.</p>
+        <h4>Step 1: Choose a Verification Method</h4>
+        <p>You can verify your account with our Telegram bot in two ways.</p>
+
+        <h5>Option A: Direct Link (Recommended)</h5>
+        <p>Click the button below to open a chat with the Dota2Notify bot and automatically send your verification token. This is the fastest way to get started.</p>
         <p><a href="https://t.me/yunier_bot?start={{ token }}" target="_blank" class="button">Verify with Telegram</a></p>
 
-        <h3>Option 2: Manual Verification</h3>
-        <p>1. Open Telegram and search for the bot: <strong>yunier_bot</strong></p>
-        <p>2. Start a chat with the bot and send the following command:</p>
-        <pre><code>/start {{ token }}</code></pre>
+        <h5>Option B: Manual Verification</h5>
+        <p>If the button doesn't work, you can do it manually:</p>
+        <ol style="margin-left: 20px;">
+            <li>Open Telegram and search for the bot: <strong style="font-size: 1.2em; color: #fff;">yunier_bot</strong></li>
+            <li>Start a chat with the bot.</li>
+            <li>Send the following command to the bot:</li>
+        </ol>
+        <pre><code style="font-size: 1.2em; color: #fff;">/start {{ token }}</code></pre>
+        
+        <h4 style="margin-top: 2rem;">Step 2: Wait for Confirmation</h4>
+        <p>Once you've sent the token, this page will automatically refresh as soon as the connection is confirmed.</p>
     {% endif %}
 {% endblock %}
 
@@ -37,7 +47,7 @@
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             const interval = setInterval(function () {
-                fetch('/notifications/is_telegram_connected')
+                fetch("{{ url_for('is_telegram_connected') }}")
                     .then(response => response.json())
                     .then(data => {
                         if (data.connected) {

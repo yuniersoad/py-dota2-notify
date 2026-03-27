@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dota2Notify | {% block title %} {% endblock %}</title>
-    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="{{ url_for('static', path='/style.css') }}">
 </head>
 <body>
     <header>
@@ -16,7 +16,7 @@
                 </div>
                 {% if steam_id %}
                     <div style="display: flex; gap: 10px; align-items: center;">
-                        <a href="/notifications" class="login-link" style="display: flex; align-items: center; gap: 8px; text-decoration: none;">
+                        <a href="/notifications" class="login-link">
                             {% if current_user_summary %}
                                 <img src="{{ current_user_summary.avatar }}" alt="Avatar" style="width: 32px; height: 32px; border-radius: 50%;">
                             {% endif %}
@@ -31,9 +31,9 @@
                 {% endif %}
             </div>
             <nav>
-                <a href="/">Home</a>
                 {% if steam_id %}
-                    <a href="/notifications">Notifications</a>
+                    <a href="/" class="{{ 'active' if request.url.path == '/' else '' }}">Friends</a>
+                    <a href="/notifications" class="{{ 'active' if request.url.path in ['/notifications', '/notifications/'] else '' }}">Notifications</a>
                 {% endif %}
             </nav>
         </div>

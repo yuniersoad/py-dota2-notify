@@ -7,34 +7,42 @@
 {% block content %}
     {% if steam_id %}
         <h2>Following</h2>
-        <ul>
+        <ul class="friend-list">
         {% for friend in following %}
-                <li>
-                    <img src="{{ friend.avatar }}" alt="Avatar" style="width: 32px; height: 32px; vertical-align: middle; margin-right: 8px;">
-                    {{ friend.personaname }}
-                    <form action="/unfollow/{{ friend.steamid }}" method="post" style="display: inline;">
-                        <button type="submit">Unfollow</button>
-                    </form>
-                </li>
+            <li class="friend-item">
+                <div class="friend-info">
+                    <img src="{{ friend.avatar }}" alt="Avatar">
+                    <span>{{ friend.personaname }}</span>
+                </div>
+                <form action="/unfollow/{{ friend.steamid }}" method="post" style="display: inline;">
+                    <button type="submit" class="unfollow">Unfollow</button>
+                </form>
+            </li>
+        {% else %}
+            <div class="info-box">
+                <p>You are not following any friends yet. Find them in the list below!</p>
+            </div>
         {% endfor %}
         </ul>
 
         <h2>Not Following</h2>
-        <ul>
+        <ul class="friend-list">
         {% for friend in not_following %}
-                <li>
-                    <img src="{{ friend.avatar }}" alt="Avatar" style="width: 32px; height: 32px; vertical-align: middle; margin-right: 8px;">
-                    {{ friend.personaname }}
-                    <form action="/follow/{{ friend.steamid }}" method="post" style="display: inline;">
-                        <button type="submit">Follow</button>
-                    </form>
-                </li>
+            <li class="friend-item">
+                <div class="friend-info">
+                    <img src="{{ friend.avatar }}" alt="Avatar">
+                    <span>{{ friend.personaname }}</span>
+                </div>
+                <form action="/follow/{{ friend.steamid }}" method="post" style="display: inline;">
+                    <button type="submit">Follow</button>
+                </form>
+            </li>
         {% endfor %}
         </ul>
     {% else %}
-        <h2>Please log in to see your friends list.</h2>
-        <p class="container">
-            <span><a href="/auth/login" ">Log In</a></span>
+        <h2>Login to start following your friends.</h2>
+        <p>
+            <a href="/auth/login" class="button">Log In</a>
         </p>        
     {% endif %}
 {% endblock %}

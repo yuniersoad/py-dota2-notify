@@ -1,4 +1,4 @@
- /* General styles */
+/* General styles */
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     line-height: 1.6;
@@ -102,6 +102,22 @@ h2 {
     background: #333;
     border-left-color: #007bff;
     color: #ddd;
+}
+
+.info-box.warning {
+    background: #4a4a2a;
+    border-left-color: #ffc107;
+    color: #fff;
+}
+
+.info-box.warning a,
+.info-box.warning a:visited {
+    color: #ffc107;
+    text-decoration: underline;
+}
+
+.info-box.warning a:hover {
+    color: #ffca2c;
 }
 
 .flash-message {

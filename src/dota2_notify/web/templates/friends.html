@@ -6,6 +6,11 @@
 
 {% block content %}
     {% if steam_id %}
+        {% if user and not user.is_telegram_verified %}
+        <div class="info-box warning">
+            <p>You have not verified your Telegram account. You will NOT receive notifications until you do so. <a href="/notifications">Verify now</a>.</p>
+        </div>
+        {% endif %}
         <h2>Following</h2>
         <ul class="friend-list">
         {% for friend in following %}

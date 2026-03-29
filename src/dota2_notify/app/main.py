@@ -9,6 +9,8 @@ import httpx
 from dota2_notify.clients.cosmosdb_client import CosmosDbUserService 
 from dota2_notify.clients.telegram_client import TelegramClient
 from dota2_notify.clients.steam_client import SteamClient
+from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
+from starlette.middleware.sessions import SessionMiddleware
 
 logging.basicConfig(
     level=logging.INFO,
@@ -76,6 +78,9 @@ app.include_router(friends.router)
 app.include_router(auth.router)
 app.include_router(notifications.router)
 app.mount("/static", static.static_files, name="static")
+
+app.add_middleware(SessionMiddleware, secret_key=get_settings().secret_key)
+app.add_middleware(ProxyHeadersMiddleware, trusted_hosts="*")
 
 def main():
     import uvicorn

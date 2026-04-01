@@ -19,9 +19,11 @@ logging.getLogger("azure.cosmos").setLevel(logging.WARNING)
 logging.getLogger("azure.core").setLevel(logging.WARNING)
 logging.getLogger("httpx").setLevel(logging.WARNING)
 
+settings = get_settings()
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    settings = get_settings()
+    
     cosmosdb_client = CosmosClient(settings.cosmosdb_endpoint_uri, settings.cosmosdb_primary_key)
     db_client = CosmosDbUserService(
         cosmosdb_client=cosmosdb_client,
@@ -46,7 +48,6 @@ async def lifespan(app: FastAPI):
     http_client = httpx.AsyncClient(
         event_hooks={'request': [log_request], 'response': [log_response]}
     )
-    telegram_client = TelegramClient(token=settings.telegram_bot_token, client=http_client)
     steam_client = SteamClient(api_key=settings.steam_api_key,client=http_client)
     app.state.steam_client = steam_client
 
@@ -57,7 +58,7 @@ async def lifespan(app: FastAPI):
     await db_client.close()
     await http_client.aclose()
 
-app = FastAPI(lifespan=lifespan)
+app = FastAPI(lifespan=lifespan, openapi_url=settings.openapi_path)
 
 @app.middleware("http")
 async def flash_message_middleware(request: Request, call_next):

@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     matchcheck_enabled: bool = Field(..., alias='MATCHCHECK__ENABLED')
     steam_api_key: str = Field(..., alias='STEAM__APIKEY')
     jwt_cookies_secret: str = Field(..., alias='JWT__COOKIES__SECRET')
+    openapi_path: str = Field("/openapi.json", alias='OPENAPI__PATH')
 
     model_config = SettingsConfigDict(
         env_file=".env",

@@ -45,9 +45,37 @@
         {% endfor %}
         </ul>
     {% else %}
-        <h2>Login to start following your friends.</h2>
-        <p>
-            <a href="/auth/login" class="button">Log In</a>
-        </p>        
+    <div class="landing-page">
+        <div class="hero">
+            <a href="/auth/login" class="button steam-login">
+                <img src="{{ url_for('static', path='steam_logo.png') }}" alt="Steam Logo" style="width: 24px; height: 24px;">
+                Login with Steam
+            </a>
+        </div>
+
+        <div class="features">
+            <div class="feature">
+                <div class="feature-icon">
+                    <img src="{{ url_for('static', path='follow_icon.png') }}" alt="Follow Friends" style="width: 50px; height: 50px;">
+                </div>
+                <h3>Follow Friends</h3>
+                <p>Choose which Steam friends you want to track.</p>
+            </div>
+            <div class="feature">
+                <div class="feature-icon">
+                    <img src="{{ url_for('static', path='subscribe_icon.png') }}" alt="Subscribe" style="width: 50px; height: 50px;">
+                </div>
+                <h3>Subscribe</h3>
+                <p>Enable Telegram notifications for specific friends.</p>
+            </div>
+            <div class="feature">
+                <div class="feature-icon">
+                    <img src="{{ url_for('static', path='notified_icon.png') }}" alt="Get Notified" style="width: 50px; height: 50px;">
+                </div>
+                <h3>Get Notified</h3>
+                <p>Receive instant alerts when they start a Dota 2 match.</p>
+            </div>
+        </div>
+    </div>
     {% endif %}
 {% endblock %}

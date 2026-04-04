@@ -13,3 +13,7 @@ router = APIRouter()
 @router.get("/robots.txt", response_class=FileResponse)
 async def robots_txt():
     return STATIC_DIR / "robots.txt"
+
+@router.get("/favicon.ico", response_class=FileResponse)
+async def favicon_ico():
+    return STATIC_DIR / "favicon.ico"

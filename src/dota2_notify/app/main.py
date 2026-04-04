@@ -77,6 +77,7 @@ app.include_router(health.router)
 app.include_router(friends.router)
 app.include_router(auth.router)
 app.include_router(notifications.router)
+app.include_router(static.router)
 app.mount("/static", static.static_files, name="static")
 
 app.add_middleware(ProxyHeadersMiddleware, trusted_hosts="*")

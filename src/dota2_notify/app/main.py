@@ -1,3 +1,4 @@
+import redis.asyncio as redis
 from dota2_notify.app.config import get_settings
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
@@ -48,7 +49,8 @@ async def lifespan(app: FastAPI):
     http_client = httpx.AsyncClient(
         event_hooks={'request': [log_request], 'response': [log_response]}
     )
-    steam_client = SteamClient(api_key=settings.steam_api_key,client=http_client)
+    redis_client = redis.Redis(host=settings.redis_host, port=settings.redis_port, db=0)
+    steam_client = SteamClient(api_key=settings.steam_api_key,client=http_client,redis_client=redis_client)
     app.state.steam_client = steam_client
 
     # pass control to the application
@@ -57,6 +59,7 @@ async def lifespan(app: FastAPI):
     # cleanup
     await db_client.close()
     await http_client.aclose()
+    await redis_client.aclose()
 
 app = FastAPI(lifespan=lifespan, openapi_url=settings.openapi_path)
 

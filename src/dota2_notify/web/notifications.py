@@ -59,7 +59,7 @@ async def get_notifications(request: Request,  steam_id: str = Depends(get_curre
     
     steam_client = request.app.state.steam_client
     current_user_summary = None
-    current_user_summary_list = await steam_client.get_player_summaries([steam_id])
+    current_user_summary_list = await steam_client.get_player_summaries(steam_id, [steam_id])
     if current_user_summary_list:
         current_user_summary = current_user_summary_list[0]
 

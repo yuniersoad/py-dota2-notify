@@ -62,7 +62,7 @@ async def test_get_player_summaries(httpx_mock):
 
     async with httpx.AsyncClient() as client:
         steam_client = SteamClient(api_key="dummy_key", client=client)
-        response = await steam_client.get_player_summaries(steam_ids=["76561198098445678", "76561198153901234"])
+        response = await steam_client.get_player_summaries("76561198098445999", steam_ids=["76561198098445678", "76561198153901234"])
         
         assert len(response) == 2
         assert response[0].steamid == "76561198098445678"

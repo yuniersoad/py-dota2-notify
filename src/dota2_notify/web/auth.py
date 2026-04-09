@@ -49,7 +49,7 @@ async def steam_callback(request: Request, user_service: CosmosDbUserService = D
     user = await user_service.get_user_with_steam_id_async(int(steam_id))
     if user is None:
         logging.info(f"No existing user found with Steam ID {steam_id}. Creating new user.")
-        steam_player_summaries = await request.app.state.steam_client.get_player_summaries([steam_id])
+        steam_player_summaries = await request.app.state.steam_client.get_player_summaries(steam_id, [steam_id])
         player_summary = steam_player_summaries[0] if steam_player_summaries else None
         name = player_summary.personaname if player_summary else f"User{steam_id}"
         account_id = steam_id_to_account_id(int(steam_id))

@@ -14,6 +14,8 @@ class Settings(BaseSettings):
     steam_api_key: str = Field(..., alias='STEAM__APIKEY')
     jwt_cookies_secret: str = Field(..., alias='JWT__COOKIES__SECRET')
     openapi_path: str = Field("/openapi.json", alias='OPENAPI__PATH')
+    redis_host: str = Field(..., alias="REDIS__HOST")
+    redis_port: int = Field(..., alias="REDIS__PORT")
 
     model_config = SettingsConfigDict(
         env_file=".env",

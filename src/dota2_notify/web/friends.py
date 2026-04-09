@@ -30,13 +30,13 @@ async def get_friends(
             user_service.get_user_with_steam_id_async(int(steam_id)),
             steam_client.get_friend_list(steam_id),
             user_service.get_friends_async(account_id),
-            steam_client.get_player_summaries([steam_id])
+            steam_client.get_player_summaries(steam_id,[steam_id])
         )
         
         if current_user_summary_list:
             current_user_summary = current_user_summary_list[0]
         
-        player_summaries = await steam_client.get_player_summaries(friends_steam_ids)
+        player_summaries = await steam_client.get_player_summaries(steam_id, friends_steam_ids, cache=True) # Only cache friend list summaries, not the current user summary since it is needed for the friends page and may change frequently with the profile updates and the following/unfollowing actions
         
         # Map account_id -> following_status
         # db_friends.id is the account_id as string
@@ -99,7 +99,7 @@ async def follow_friend(
         friend_account_id = steam_id_to_account_id(friend_steam_id)
 
         if str(friend_steam_id) in friend_list: # it is a new friend that is not in the database yet, but is in the steam friend list
-            friend_summary = await steam_client.get_player_summaries([str(friend_steam_id)])
+            friend_summary = await steam_client.get_player_summaries(steam_id, [str(friend_steam_id)])
             
             last_match_response, public_profile = await steam_client.get_match_history(str(friend_steam_id), matches_requested=1)
 

@@ -5,6 +5,7 @@ from fastapi.testclient import TestClient
 from dota2_notify.models.user import User
 from dota2_notify.app.config import Settings
 from dota2_notify.web.notifications import router
+from dota2_notify.web import static
 from dota2_notify.web.dependencies import get_user_service
 from dota2_notify.app.config import get_settings
 from dota2_notify.web.auth import get_current_user
@@ -15,6 +16,8 @@ def client_with_mocks():
     """Pytest fixture to set up a TestClient with mocked dependencies."""
     app = FastAPI()
     app.include_router(router)
+    app.include_router(static.router)
+    app.mount("/static", static.static_files, name="static")
 
     # Mock steam_client and attach to app state
     mock_steam_client = MagicMock()

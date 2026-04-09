@@ -234,7 +234,7 @@ async def test_steam_callback_creates_new_user():
     # Verify mocks were called
     mock_steam_client.validate_auth_request.assert_called_once()
     mock_user_service.get_user_with_steam_id_async.assert_called_once_with(int(test_steam_id))
-    mock_steam_client.get_player_summaries.assert_called_once_with([test_steam_id])
+    mock_steam_client.get_player_summaries.assert_called_once_with(test_steam_id, [test_steam_id])
     
     # Verify that a telegram token was created for the new user
     from dota2_notify.models.user import steam_id_to_account_id

@@ -6,12 +6,15 @@ from unittest.mock import AsyncMock, MagicMock
 from dota2_notify.models.steam_player_summary import SteamPlayerSummary
 from dota2_notify.models.user import Friend, User, steam_id_to_account_id
 from dota2_notify.web.dependencies import get_user_service, get_steam_client
+from dota2_notify.web import static
 
 
 def test_get_friends_with_authenticated_user():
     """Test that / endpoint returns friends list for authenticated user"""
     app = FastAPI()
     app.include_router(friends.router)
+    app.include_router(static.router)
+    app.mount("/static", static.static_files, name="static")
     
     # Mock get_current_user to return a valid steam_id
     test_steam_id = "76561198012345678"

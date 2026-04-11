@@ -205,26 +205,6 @@ class CosmosDbUserService:
             self._logger.error(f"Error updating user {user.user_id}: {ex}")
             raise
     
-    async def update_last_match_id(self, account_id: int, followed_player_id: int, last_match_id: int):
-        try:
-            self._logger.info(f"Updating last match ID for user {account_id}, player {followed_player_id} to {last_match_id}")
-            
-            if account_id == followed_player_id:
-                record = await self.get_user_async(account_id)
-            else:
-                record = await self.get_friend_async(account_id, followed_player_id)
-            
-            if record is None:
-                self._logger.warning(f"User/Friend {account_id}, {followed_player_id} not found for update")
-                return
-            
-            record.last_match_id = last_match_id
-            await self._user_container.upsert_item(record.model_dump(by_alias=True))
-            self._logger.info(f"Successfully updated last match ID for user {account_id}, player {followed_player_id}")
-            
-        except Exception as ex:
-            self._logger.error(f"Error updating last match ID for user {account_id}, player {followed_player_id}: {ex}")
-            raise
     ##
     ## Telegram verification token management
     ##

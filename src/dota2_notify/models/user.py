@@ -18,7 +18,6 @@ class Friend(BaseModel):
     id: str = ""
     user_id: int = Field(0, alias="userId")
     name: str = ""
-    last_match_id: int = Field(0, alias="lastMatchId")
     following: bool = False
     type: str = "friend"
 
@@ -34,7 +33,6 @@ class User(BaseModel):
     telegram_username: str = Field("", alias="telegramUsername")
     telegram_verify_token: str = Field("", alias="telegramVerifyToken")
     following: bool = True
-    last_match_id: int = Field(0, alias="lastMatchId")
     type: str = "user"
 
     @property

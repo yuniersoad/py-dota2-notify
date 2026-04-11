@@ -73,8 +73,7 @@ async def send_notification(user_id: int, account_id: int, match: Match, db_clie
     logging.info("Sending notification to user %s (ID: %s): %s", notified_user.name, notified_user.id, message)
 
     await telegram_client.send_message(notified_user.telegram_chat_id, message)
-    #await db_client.update_last_match_id(user_id, account_id, match.match_id)
-
+   
 
 async def process_match(match: Match, redis_client: redis.Redis, db_client: CosmosDbUserService, telegram_client: TelegramClient):
     """Process a single match to find and notify users."""

@@ -133,14 +133,12 @@ async def test_get_friends_async():
         assert friends[0].id == "1111263425"
         assert friends[0].user_id == 123
         assert friends[0].name == "Friend One"
-        assert friends[0].last_match_id == 8683839389
         assert friends[0].following is True
         assert friends[0].type == "friend"
         
         assert friends[1].id == "2222263425"
         assert friends[1].user_id == 123
         assert friends[1].name == "Friend Two"
-        assert friends[1].last_match_id == 8683839390
         assert friends[1].following is False
         assert friends[1].type == "friend"
         
@@ -180,52 +178,10 @@ async def test_get_friend_async():
         assert friend.id == "1111263425"
         assert friend.user_id == 123
         assert friend.name == "Friend One"
-        assert friend.last_match_id == 8683839389
         assert friend.following is True
         assert friend.type == "friend"
         
         mock_container.query_items.assert_called_once()
-
-@pytest.mark.asyncio
-async def test_update_last_match_id_for_friend():
-    mock_friend_data = {
-        "id": "1111263425",
-        "userId": 123,
-        "name": "Friend One",
-        "lastMatchId": 8683839389,
-        "following": True,
-        "type": "friend"
-    }
-
-    async def mock_query_iterator(*args, **kwargs):
-        yield mock_friend_data
-
-    mock_container = MagicMock()
-    mock_container.query_items.side_effect = mock_query_iterator
-    mock_container.upsert_item = AsyncMock()
-
-    mock_client_instance = MagicMock()
-    mock_database = mock_client_instance.get_database_client.return_value
-    mock_database.get_container_client.return_value = mock_container
-    mock_client_instance.close = AsyncMock()
-
-    async with CosmosDbUserService(
-        cosmosdb_client=mock_client_instance,
-        database_name="test-db",
-        user_container_name="test-container",
-        telegram_verify_token_container_name="test-telegram-container"
-    ) as service:
-        await service.update_last_match_id(
-            account_id=123,
-            followed_player_id=1111263425,
-            last_match_id=9999999999
-        )
-
-        mock_container.upsert_item.assert_awaited_once()
-        upserted_data = mock_container.upsert_item.call_args[0][0]
-        assert upserted_data["lastMatchId"] == 9999999999
-        assert upserted_data["id"] == "1111263425"
-        assert upserted_data["userId"] == 123
 
 @pytest.mark.asyncio
 async def test_create_user_async():
@@ -324,7 +280,6 @@ async def test_update_friend_async():
         id="789",
         user_id=123,
         name="Updated Friend",
-        last_match_id=2000,
         following=True,
         type="friend"
     )

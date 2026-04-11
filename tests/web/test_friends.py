@@ -46,7 +46,6 @@ def test_get_friends_with_authenticated_user():
         id=str(friend1_account_id),
         user_id=steam_id_to_account_id(int(test_steam_id)),
         name="Friend1",
-        last_match_id=12345,
         following=True,
         type="friend"
     )
@@ -178,7 +177,6 @@ def test_follow_friend_happy_path_new_friend():
     assert saved_friend.user_id == steam_id_to_account_id(int(test_steam_id))
     assert saved_friend.id == str(steam_id_to_account_id(int(friend_steam_id)))
     assert saved_friend.name == "New Friend"
-    assert saved_friend.last_match_id == 123456789
     assert saved_friend.following is True
 
 
@@ -202,7 +200,6 @@ def test_unfollow_friend_happy_path():
         id=str(friend_account_id),
         user_id=steam_id_to_account_id(int(test_steam_id)),
         name="Friend To Unfollow",
-        last_match_id=12345,
         following=True,
         type="friend"
     )

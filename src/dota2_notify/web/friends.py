@@ -93,21 +93,20 @@ async def follow_friend(
             await user_service.update_user_async(user)
         return RedirectResponse(url="/", status_code=http_status.HTTP_303_SEE_OTHER)
 
+    friend_summary = await steam_client.get_player_summaries(steam_id, [str(friend_steam_id)])
+    _, public_profile = await steam_client.get_match_history(str(friend_steam_id), matches_requested=1)
+
+    if not public_profile:
+        response = RedirectResponse(url="/", status_code=http_status.HTTP_303_SEE_OTHER)
+        response.set_cookie(key="flash_message", value="Profile is private and cannot be followed.")
+        return response
+    
     friend = await user_service.get_friend_by_steam_id_async(int(steam_id), friend_steam_id)
     if friend is None:
         friend_list = await steam_client.get_friend_list(int(steam_id))
         friend_account_id = steam_id_to_account_id(friend_steam_id)
 
         if str(friend_steam_id) in friend_list: # it is a new friend that is not in the database yet, but is in the steam friend list
-            friend_summary = await steam_client.get_player_summaries(steam_id, [str(friend_steam_id)])
-            
-            _, public_profile = await steam_client.get_match_history(str(friend_steam_id), matches_requested=1)
-
-            if not public_profile:
-                response = RedirectResponse(url="/", status_code=http_status.HTTP_303_SEE_OTHER)
-                response.set_cookie(key="flash_message", value="Profile is private and cannot be followed.")
-                return response
-
             friend = Friend(
                 id=str(friend_account_id),
                 user_id=steam_id_to_account_id(int(steam_id)),
@@ -118,6 +117,7 @@ async def follow_friend(
             return RedirectResponse(url="/", status_code=http_status.HTTP_303_SEE_OTHER)
                 
     friend.following = True
+    friend.name = friend_summary[0].personaname if friend_summary else friend.name # Update the name in case it changed on Steam
     
     await user_service.update_friend_async(friend)
     return RedirectResponse(url="/", status_code=http_status.HTTP_303_SEE_OTHER)

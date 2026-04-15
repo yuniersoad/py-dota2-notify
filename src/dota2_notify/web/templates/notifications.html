@@ -35,7 +35,10 @@
             <li>Start a chat with the bot.</li>
             <li>Send the following command to the bot:</li>
         </ol>
-        <pre><code style="font-size: 1.2em; color: #fff;">/start {{ token }}</code></pre>
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <pre><code id="copy-text" style="font-size: 1.2em; color: #fff;">/start {{ token }}</code></pre>
+            <button class="button" onclick="copyToClipboard()">Copy</button>
+        </div>
         
         <h4 style="margin-top: 2rem;">Step 2: Wait for Confirmation</h4>
         <p>Once you've sent the token, this page will automatically refresh as soon as the connection is confirmed.</p>
@@ -45,6 +48,16 @@
 {% block scripts %}
     {% if not verified %}
     <script>
+        function copyToClipboard() {
+            const textToCopy = document.getElementById('copy-text').innerText;
+            navigator.clipboard.writeText(textToCopy).then(() => {
+                // Optional: Show a confirmation message
+                alert('Copied to clipboard!');
+            }).catch(err => {
+                console.error('Failed to copy text: ', err);
+            });
+        }
+
         document.addEventListener('DOMContentLoaded', function () {
             const interval = setInterval(function () {
                 fetch("{{ url_for('is_telegram_connected') }}")

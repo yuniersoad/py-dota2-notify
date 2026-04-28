@@ -1,6 +1,6 @@
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from functools import lru_cache
+from functools import cache
 
 class Settings(BaseSettings):
     telegram_bot_token: str = Field(..., alias='TELEGRAM__BOTTOKEN')
@@ -24,6 +24,6 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-@lru_cache
+@cache
 def get_settings():
     return Settings()

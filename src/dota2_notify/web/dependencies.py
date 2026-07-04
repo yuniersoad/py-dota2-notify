@@ -2,6 +2,7 @@ from pathlib import Path
 from datetime import datetime
 from fastapi import Request
 from fastapi.templating import Jinja2Templates
+from starlette.requests import HTTPConnection
 
 top = Path(__file__).resolve().parent
 template_obj = Jinja2Templates(directory=str(top / "templates"))
@@ -14,5 +15,5 @@ def get_user_service(request: Request):
 def get_steam_client(request: Request):
     return request.app.state.steam_client
 
-def get_redis_client(request: Request):
+def get_redis_client(request: HTTPConnection):
     return request.app.state.redis_client

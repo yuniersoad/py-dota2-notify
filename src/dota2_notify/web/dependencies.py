@@ -13,3 +13,6 @@ def get_user_service(request: Request):
 
 def get_steam_client(request: Request):
     return request.app.state.steam_client
+
+def get_redis_client(request: Request):
+    return request.app.state.redis_client

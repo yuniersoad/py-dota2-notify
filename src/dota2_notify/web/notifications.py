@@ -1,12 +1,20 @@
 from dota2_notify.app.config import Settings, get_settings
 from dota2_notify.clients.cosmosdb_client import CosmosDbUserService
-from .dependencies import get_user_service, template_obj
-from fastapi import APIRouter, HTTPException, Request, Depends, status as http_status
+from .dependencies import get_user_service, get_redis_client, template_obj
+from fastapi import APIRouter, HTTPException, Request, Depends, WebSocket, WebSocketDisconnect, status as http_status
 from .auth import get_current_user
 from dota2_notify.models.user import steam_id_to_account_id
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 from typing import Optional
+import asyncio
+import json
+import logging
+
+logger = logging.getLogger(__name__)
+
+TELEGRAM_VERIFIED_CHANNEL = "telegram_verified:{account_id}"
+WS_TIMEOUT_SECONDS = 600  # 10 minutes
 
 class TelegramUser(BaseModel):
     id: int
@@ -96,8 +104,51 @@ async def is_telegram_connected(request: Request, steam_id: str = Depends(get_cu
     return {"connected": user.is_telegram_verified}
 
 
+@router.websocket("/ws")
+async def telegram_verification_ws(websocket: WebSocket, steam_id: str = Depends(get_current_user), redis=Depends(get_redis_client)):
+    if steam_id is None:
+        await websocket.close(code=4401)
+        return
+
+    await websocket.accept()
+    account_id = steam_id_to_account_id(int(steam_id))
+    channel = TELEGRAM_VERIFIED_CHANNEL.format(account_id=account_id)
+
+    pubsub = redis.pubsub()
+    await pubsub.subscribe(channel)
+    logger.info(f"WebSocket opened for account_id={account_id}, subscribed to {channel}")
+
+    try:
+        deadline = asyncio.get_event_loop().time() + WS_TIMEOUT_SECONDS
+        while True:
+            remaining = deadline - asyncio.get_event_loop().time()
+            if remaining <= 0:
+                await websocket.send_text(json.dumps({"connected": False, "reason": "timeout"}))
+                break
+
+            message = await asyncio.wait_for(pubsub.get_message(ignore_subscribe_messages=True), timeout=min(remaining, 1.0))
+            if message is not None:
+                await websocket.send_text(json.dumps({"connected": True}))
+                break
+
+    except asyncio.TimeoutError:
+        pass
+    except WebSocketDisconnect:
+        logger.info(f"WebSocket disconnected for account_id={account_id}")
+    except Exception as e:
+        logger.error(f"WebSocket error for account_id={account_id}: {e}")
+    finally:
+        await pubsub.unsubscribe(channel)
+        await pubsub.aclose()
+        logger.info(f"WebSocket closed for account_id={account_id}")
+        try:
+            await websocket.close()
+        except Exception:
+            pass
+
+
 @router.post("/telegram-webhook/74ad1s_{secret}")
-async def telegram_webhook(secret: str, update: TelegramUpdate, user_service: CosmosDbUserService = Depends(get_user_service), settings: Settings = Depends(get_settings)):
+async def telegram_webhook(secret: str, update: TelegramUpdate, user_service: CosmosDbUserService = Depends(get_user_service), settings: Settings = Depends(get_settings), redis=Depends(get_redis_client)):
     
     if secret != settings.telegram_bot_token:
         raise HTTPException(status_code=401, detail="Unauthorized")
@@ -115,5 +166,8 @@ async def telegram_webhook(secret: str, update: TelegramUpdate, user_service: Co
                     user.telegram_verify_token = ""
                     await user_service.update_user_async(user)
                     await user_service.delete_telegram_verify_token_async(token)
+                    channel = TELEGRAM_VERIFIED_CHANNEL.format(account_id=account_id)
+                    await redis.publish(channel, "connected")
+                    logger.info(f"Published to {channel} after Telegram verification for account_id={account_id}")
     
     return {"status": "ok"}

@@ -6,7 +6,7 @@ from dota2_notify.models.user import User
 from dota2_notify.app.config import Settings
 from dota2_notify.web.notifications import router
 from dota2_notify.web import static
-from dota2_notify.web.dependencies import get_user_service
+from dota2_notify.web.dependencies import get_user_service, get_redis_client
 from dota2_notify.app.config import get_settings
 from dota2_notify.web.auth import get_current_user
 
@@ -53,6 +53,15 @@ def client_with_mocks():
             JWT__COOKIES__SECRET="test_secret_key_for_testing"
         )
     app.dependency_overrides[get_settings] = get_test_settings
+
+    # Mock redis client
+    mock_redis = MagicMock()
+    mock_redis.publish = AsyncMock()
+
+    async def mock_get_redis_client():
+        return mock_redis
+
+    app.dependency_overrides[get_redis_client] = mock_get_redis_client
 
     # Mock current user
     test_steam_id = "76561198012345678"
@@ -245,8 +254,12 @@ def test_telegram_webhook_invalid_secret_returns_401():
     async def mock_get_user_service():
         return MagicMock()
 
+    async def mock_get_redis_client():
+        return MagicMock()
+
     app.dependency_overrides[get_settings] = get_test_settings
     app.dependency_overrides[get_user_service] = mock_get_user_service
+    app.dependency_overrides[get_redis_client] = mock_get_redis_client
 
     client = TestClient(app)
     payload = {"update_id": 1}

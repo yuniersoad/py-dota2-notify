@@ -51,7 +51,6 @@
         function copyToClipboard() {
             const textToCopy = document.getElementById('copy-text').innerText;
             navigator.clipboard.writeText(textToCopy).then(() => {
-                // Optional: Show a confirmation message
                 alert('Copied to clipboard!');
             }).catch(err => {
                 console.error('Failed to copy text: ', err);
@@ -59,19 +58,55 @@
         }
 
         document.addEventListener('DOMContentLoaded', function () {
-            const interval = setInterval(function () {
-                fetch("{{ url_for('is_telegram_connected') }}")
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.connected) {
-                            clearInterval(interval);
-                            window.location.reload();
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error polling for Telegram connection:', error);
-                    });
-            }, 5000); // Poll every 5 seconds
+            let pollingInterval = null;
+
+            function startPollingFallback() {
+                if (pollingInterval) return;
+                console.warn('WebSocket unavailable, falling back to polling.');
+                pollingInterval = setInterval(function () {
+                    fetch("{{ url_for('is_telegram_connected') }}")
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.connected) {
+                                clearInterval(pollingInterval);
+                                window.location.reload();
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error polling for Telegram connection:', error);
+                        });
+                }, 5000);
+            }
+
+            function connectWebSocket() {
+                const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+                const ws = new WebSocket(`${protocol}//${location.host}/notifications/ws`);
+
+                ws.onmessage = function (event) {
+                    const data = JSON.parse(event.data);
+                    if (data.connected) {
+                        window.location.reload();
+                    }
+                };
+
+                ws.onerror = function () {
+                    ws.close();
+                    startPollingFallback();
+                };
+
+                ws.onclose = function (event) {
+                    // 4401 = unauthenticated; do not retry
+                    if (event.code !== 4401 && !pollingInterval) {
+                        startPollingFallback();
+                    }
+                };
+            }
+
+            if ('WebSocket' in window) {
+                connectWebSocket();
+            } else {
+                startPollingFallback();
+            }
         });
     </script>
     {% endif %}

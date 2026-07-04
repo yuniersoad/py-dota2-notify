@@ -50,6 +50,7 @@ async def lifespan(app: FastAPI):
         event_hooks={'request': [log_request], 'response': [log_response]}
     )
     redis_client = redis.Redis(host=settings.redis_host, port=settings.redis_port, db=0)
+    app.state.redis_client = redis_client
     steam_client = SteamClient(api_key=settings.steam_api_key,client=http_client,redis_client=redis_client)
     app.state.steam_client = steam_client
 

@@ -5,6 +5,7 @@ from urllib.parse import urlencode
 import re
 from datetime import datetime, timedelta, timezone
 from jose import jwt, JWTError
+from starlette.requests import HTTPConnection
 
 from dota2_notify.app.config import Settings, get_settings
 from dota2_notify.clients.cosmosdb_client import CosmosDbUserService
@@ -79,7 +80,7 @@ async def logout():
     )
     return response
 
-async def get_current_user(request: Request, settings: Settings = Depends(get_settings)) -> str | None:
+async def get_current_user(request: HTTPConnection, settings: Settings = Depends(get_settings)) -> str | None:
     token = request.cookies.get(cookie_name)
     if not token:
         return None

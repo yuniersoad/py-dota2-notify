@@ -16,6 +16,7 @@ dependencies = [
     "python-jose>=3.3.0",
     "pydantic-settings>=2.13.1",
     "redis[hiredis]>=7.2.1",
+    "websockets>=13.0",
 ]
 
 [build-system]

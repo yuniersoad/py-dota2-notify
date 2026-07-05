@@ -119,9 +119,9 @@ async def telegram_verification_ws(websocket: WebSocket, steam_id: str = Depends
     logger.info(f"WebSocket opened for account_id={account_id}, subscribed to {channel}")
 
     try:
-        deadline = asyncio.get_event_loop().time() + WS_TIMEOUT_SECONDS
+        deadline = asyncio.get_running_loop().time() + WS_TIMEOUT_SECONDS
         while True:
-            remaining = deadline - asyncio.get_event_loop().time()
+            remaining = deadline - asyncio.get_running_loop().time()
             if remaining <= 0:
                 await websocket.send_text(json.dumps({"connected": False, "reason": "timeout"}))
                 break

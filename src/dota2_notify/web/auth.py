@@ -68,7 +68,7 @@ async def steam_callback(request: Request, user_service: CosmosDbUserService = D
         value=token, 
         httponly=True, 
         samesite="lax", 
-        secure=False # Set to False only for local development
+        secure=True
     )
     return response
 

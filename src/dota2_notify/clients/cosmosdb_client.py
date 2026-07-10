@@ -234,31 +234,31 @@ class CosmosDbUserService:
     
     async def get_user_id_by_telegram_token_async(self, token: str) -> Optional[int]:
         try:
-            self._logger.info(f"Getting user ID by Telegram token {token}")
+            self._logger.info("Getting user ID by Telegram token")
             response = await self._telegram_verify_token_container.read_item(
                 item=token,
                 partition_key=token
             )
             user_id = response.get("userId")
-            self._logger.info(f"Successfully retrieved user ID {user_id} for Telegram token {token}")
+            self._logger.info(f"Successfully retrieved user ID {user_id} for Telegram token")
             return user_id
         except exceptions.CosmosResourceNotFoundError:
-            self._logger.warning(f"Telegram token {token} not found")
+            self._logger.warning("Telegram token not found")
             return None
         except Exception as ex:
-            self._logger.error(f"Error getting user ID by Telegram token {token}: {ex}")
+            self._logger.error(f"Error getting user ID by Telegram token: {ex}")
             raise
     
     async def delete_telegram_verify_token_async(self, token: str):
         try:
-            self._logger.info(f"Deleting Telegram verification token {token}")
+            self._logger.info("Deleting Telegram verification token")
             await self._telegram_verify_token_container.delete_item(
                 item=token,
                 partition_key=token
             )
-            self._logger.info(f"Successfully deleted Telegram verification token {token}")
+            self._logger.info("Successfully deleted Telegram verification token")
         except exceptions.CosmosResourceNotFoundError:
-            self._logger.warning(f"Telegram token {token} not found for deletion")
+            self._logger.warning("Telegram token not found for deletion")
         except Exception as ex:
-            self._logger.error(f"Error deleting Telegram verification token {token}: {ex}")
+            self._logger.error(f"Error deleting Telegram verification token: {ex}")
             raise
